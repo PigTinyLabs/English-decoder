@@ -166,33 +166,25 @@ function speakSequence(texts, { rate = 0.85, pauseMs = 350 } = {}) {
   speakNext(0);
 }
 
-
-// ---- Local eSpeak-NG server integration (optional, falls back to browser TTS) ----
-const ESPEAK_SERVER = "http://localhost:8008";
-
-function playBuffer(buf) {
-  return new Promise((resolve, reject) => {
-    const blob = new Blob([buf], { type: "audio/wav" });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
-    audio.onerror = () => { URL.revokeObjectURL(url); reject(new Error("playback failed")); };
-    audio.play().catch(reject);
-  });
-}
+// ---- Local Audio Files Integration -------------------------------------------------------
+// Đã tải 44 file âm thanh chuẩn vào thư mục /audio/
 
 async function speakIpaThenWord(sym, example) {
   try {
-    const r1 = await fetch(`${ESPEAK_SERVER}/speak-ipa?sym=${encodeURIComponent(sym)}`);
-    if (!r1.ok) throw new Error("server error");
-    await playBuffer(await r1.arrayBuffer());
-    const r2 = await fetch(`${ESPEAK_SERVER}/speak-word?text=${encodeURIComponent(example)}`);
-    if (!r2.ok) throw new Error("server error");
-    await playBuffer(await r2.arrayBuffer());
+    const audioUrl = `audio/${encodeURIComponent(sym)}.mp3`;
+    const audio = new Audio(audioUrl);
+    await new Promise((resolve, reject) => {
+      audio.onended = resolve;
+      audio.onerror = reject;
+      audio.play().catch(reject);
+    });
+    // Nghỉ một chút rồi đọc từ ví dụ bằng giọng trình duyệt
+    setTimeout(() => {
+      speakSequence([example], { rate: 0.85, pauseMs: 0 });
+    }, 200);
   } catch (e) {
-    // Local server không chạy hoặc lỗi -> fallback giọng đọc trình duyệt
-    // Trình duyệt không thể đọc chuẩn các ký tự phiên âm đơn lẻ (sẽ bị biến thành đọc tên chữ cái)
-    // Do đó tốt nhất là chỉ đọc từ ví dụ (example word)
+    // Fallback: nếu lỗi không tải được audio (ví dụ chạy trên môi trường không hỗ trợ)
+    // thì chỉ đọc từ ví dụ.
     speakSequence([example]);
   }
 }
