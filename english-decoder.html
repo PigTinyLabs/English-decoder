@@ -123,7 +123,10 @@
     </div>
     <div class="sub" style="margin-top: -10px; margin-bottom: 20px;">Luyện đọc từ mục tiêu. Trình duyệt cần cấp quyền Microphone (Google Chrome).</div>
     <div class="practice-box" id="practiceBox">
-      <div class="target-word" id="pracTargetWord">...</div>
+      <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 4px;">
+        <div class="target-word" id="pracTargetWord" style="margin-bottom: 0;">...</div>
+        <button class="btn ghost" id="pracPlayBtn" style="padding: 0; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 16px;" title="Nghe mẫu">🔊</button>
+      </div>
       <div class="target-ipa" id="pracTargetIpa">/.../</div>
       <button class="mic-btn" id="micBtn" title="Bấm để ghi âm">🎤</button>
       <div class="diff-box">
@@ -597,15 +600,18 @@ const pracSpokenWord = document.getElementById("pracSpokenWord");
 const pracDiffResult = document.getElementById("pracDiffResult");
 const pracInput = document.getElementById("pracInput");
 const pracParseBtn = document.getElementById("pracParseBtn");
+const pracPlayBtn = document.getElementById("pracPlayBtn");
 
 function initSpeechPractice() {
   if (!state.data || !state.data.word) {
     pracTargetWord.textContent = "Chưa có từ";
     pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
+    pracPlayBtn.style.display = "none";
     return;
   }
   pracTargetWord.textContent = state.data.word;
   pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
+  pracPlayBtn.style.display = "flex";
   pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
   pracDiffResult.innerHTML = "";
   micBtn.classList.remove("recording");
@@ -618,11 +624,13 @@ pracParseBtn.addEventListener("click", async () => {
     pracTargetWord.textContent = "Đang tra từ...";
     pracTargetIpa.textContent = "/.../";
     pracDiffResult.innerHTML = "";
+    pracPlayBtn.style.display = "none";
     await runParse(w);
     initSpeechPractice();
   }
 });
 pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
+pracPlayBtn.addEventListener("click", playAudio);
 
 function renderDiff(targetTokens, spokenTokens) {
   const n = targetTokens.length, m = spokenTokens.length;
