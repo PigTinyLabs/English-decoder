@@ -73,6 +73,22 @@
   .board-ex { font-size: 10.5px; color: var(--muted); display: block; margin-top: 3px; }
   .board-mouth { display: flex; justify-content: center; margin-bottom: 4px; }
   .mouth-svg { width: 44px; height: 44px; }
+  /* Practice Tab Styles */
+  .practice-box { text-align: center; margin-top: 20px; }
+  .target-word { font-size: 28px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; margin-bottom: 4px; }
+  .target-ipa { font-size: 18px; color: var(--muted); margin-bottom: 24px; }
+  .mic-btn { background: var(--surface-alt); border: 2px solid var(--border); border-radius: 50%;
+    width: 64px; height: 64px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 24px; cursor: pointer; transition: all 0.2s; color: var(--text); margin-bottom: 24px; }
+  .mic-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .mic-btn.recording { border-color: var(--red); color: var(--red); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(248, 113, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } }
+  .diff-box { background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--border); min-height: 80px; }
+  .diff-word { font-size: 16px; margin-bottom: 8px; color: var(--muted); }
+  .diff-result { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
+  .correct { color: var(--emerald); }
+  .wrong { color: var(--red); text-decoration: line-through; opacity: 0.8; }
+  .missing { color: var(--red); border-bottom: 2px dashed var(--red); opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -85,6 +101,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="parser">word_parser.ts</button>
     <button class="tab" data-tab="board">ipa_board.ts</button>
+    <button class="tab" data-tab="practice">speech_practice.ts</button>
   </div>
 
   <div class="panel active" id="panel-parser">
@@ -96,6 +113,21 @@
     <div id="statusBox"></div>
     <div id="resultBox"></div>
     <div id="logBox"></div>
+  </div>
+
+  <div class="panel" id="panel-practice">
+    <div class="promptline">
+      <div class="sub">Luyện đọc từ mục tiêu. Trình duyệt cần cấp quyền Microphone.</div>
+    </div>
+    <div class="practice-box" id="practiceBox">
+      <div class="target-word" id="pracTargetWord">...</div>
+      <div class="target-ipa" id="pracTargetIpa">/.../</div>
+      <button class="mic-btn" id="micBtn" title="Bấm để ghi âm">🎤</button>
+      <div class="diff-box">
+        <div class="diff-word" id="pracSpokenWord">Nhấn mic và đọc to từ trên</div>
+        <div class="diff-result" id="pracDiffResult"></div>
+      </div>
+    </div>
   </div>
 
   <div class="panel" id="panel-board">
@@ -364,6 +396,9 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    if (tab.dataset.tab === "practice") {
+      if (typeof initSpeechPractice === "function") initSpeechPractice();
+    }
   });
 });
 
@@ -541,6 +576,135 @@ Object.entries(IPA_BOARD).forEach(([group, items]) => {
 });
 
 render();
+
+// ---- Speech Practice Logic -------------------------------------------------------
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+}
+
+const micBtn = document.getElementById("micBtn");
+const pracTargetWord = document.getElementById("pracTargetWord");
+const pracTargetIpa = document.getElementById("pracTargetIpa");
+const pracSpokenWord = document.getElementById("pracSpokenWord");
+const pracDiffResult = document.getElementById("pracDiffResult");
+
+function initSpeechPractice() {
+  if (!state.data || !state.data.word) {
+    pracTargetWord.textContent = "Chưa có từ";
+    pracTargetIpa.textContent = "Hãy sang tab Parse để tìm một từ trước";
+    return;
+  }
+  pracTargetWord.textContent = state.data.word;
+  pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
+  pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
+  pracDiffResult.innerHTML = "";
+  micBtn.classList.remove("recording");
+}
+
+function renderDiff(targetTokens, spokenTokens) {
+  const n = targetTokens.length, m = spokenTokens.length;
+  const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (targetTokens[i-1] === spokenTokens[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  let i = n, j = m;
+  const result = [];
+  while (i > 0 && j > 0) {
+    if (targetTokens[i-1] === spokenTokens[j-1]) {
+      result.unshift({ type: "correct", val: targetTokens[i-1] });
+      i--; j--;
+    } else if (dp[i-1][j] >= dp[i][j-1]) {
+      result.unshift({ type: "missing", val: targetTokens[i-1] });
+      i--;
+    } else {
+      result.unshift({ type: "wrong", val: spokenTokens[j-1] });
+      j--;
+    }
+  }
+  while (i > 0) { result.unshift({ type: "missing", val: targetTokens[i-1] }); i--; }
+  while (j > 0) { result.unshift({ type: "wrong", val: spokenTokens[j-1] }); j--; }
+  
+  let html = "/";
+  for (const r of result) {
+    if (r.type === "correct") html += `<span class="correct">${r.val}</span>`;
+    else if (r.type === "wrong") html += `<span class="wrong" title="bạn đã phát âm dư âm này">${r.val}</span>`;
+    else if (r.type === "missing") html += `<span class="missing" title="bạn phát âm sai hoặc thiếu âm này">${r.val}</span>`;
+  }
+  html += "/";
+  pracDiffResult.innerHTML = html;
+}
+
+if (micBtn) {
+  micBtn.addEventListener("click", () => {
+    if (!recognition) {
+      alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng dùng Google Chrome hoặc Edge.");
+      return;
+    }
+    if (!state.data || !state.data.word) return;
+    
+    micBtn.classList.add("recording");
+    pracSpokenWord.textContent = "Đang nghe...";
+    pracDiffResult.innerHTML = "";
+    
+    try { recognition.start(); } catch(e) {}
+  });
+  
+  if (recognition) {
+    recognition.onresult = async (event) => {
+      const spoken = event.results[0][0].transcript.trim().toLowerCase();
+      // Loại bỏ các dấu câu
+      const cleanSpoken = spoken.replace(/[.,!?]/g, "");
+      pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
+      micBtn.classList.remove("recording");
+      
+      if (cleanSpoken === state.data.word.toLowerCase()) {
+        renderDiff(state.targetTokens, state.targetTokens);
+      } else {
+        pracDiffResult.innerHTML = `<span style="font-size: 13px; color: var(--muted)">Đang phân tích lỗi sai...</span>`;
+        try {
+          // Lấy phiên âm của từ người dùng vừa nói từ dictionaryapi.dev
+          const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanSpoken)}`);
+          if (!res.ok) throw new Error("Not found");
+          const json = await res.json();
+          let spokenPhonetic = "";
+          for (const item of json) {
+            if (item.phonetic) { spokenPhonetic = item.phonetic; break; }
+            if (item.phonetics) {
+              const p = item.phonetics.find(x => x.text);
+              if (p) { spokenPhonetic = p.text; break; }
+            }
+          }
+          if (!spokenPhonetic) throw new Error("No IPA");
+          
+          const spokenTokens = tokenizeIpa(spokenPhonetic.replace(/[/[\]]/g, ""));
+          renderDiff(state.targetTokens, spokenTokens);
+        } catch (e) {
+          pracDiffResult.innerHTML = `<span class="wrong" style="font-size: 14px;">Không tìm thấy phiên âm cho từ "${cleanSpoken}"</span>`;
+        }
+      }
+    };
+    recognition.onspeechend = () => {
+      recognition.stop();
+      micBtn.classList.remove("recording");
+    };
+    recognition.onerror = (event) => {
+      micBtn.classList.remove("recording");
+      if (event.error !== 'no-speech') {
+         pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
+      } else {
+         pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
+      }
+    };
+  }
+}
 </script>
 </body>
 </html>
