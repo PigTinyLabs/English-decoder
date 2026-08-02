@@ -166,18 +166,6 @@ function speakSequence(texts, { rate = 0.85, pauseMs = 350 } = {}) {
   speakNext(0);
 }
 
-// Map IPA symbols to phonetic spellings that browser TTS can reasonably approximate
-const IPA_TO_TTS = {
-  "iː": "ee", "ɪ": "ih", "e": "eh", "æ": "a", "ɑː": "ah", "ɒ": "o",
-  "ɔː": "aw", "ʊ": "uh", "uː": "oo", "ʌ": "uh", "ɜː": "er", "ə": "uh",
-  "eɪ": "ay", "aɪ": "eye", "ɔɪ": "oy", "aʊ": "ow", "əʊ": "oh",
-  "ɪə": "ear", "eə": "air", "ʊə": "oor",
-  "p": "puh", "b": "buh", "t": "tuh", "d": "duh", "k": "kuh", "g": "guh",
-  "f": "fuh", "v": "vuh", "θ": "thuh", "ð": "the", "s": "suh", "z": "zuh",
-  "ʃ": "shuh", "ʒ": "zhuh", "tʃ": "chuh", "dʒ": "juh",
-  "m": "mm", "n": "nn", "ŋ": "ng", "l": "ll", "r": "rr", "ɹ": "rr",
-  "j": "yuh", "w": "wuh", "h": "huh"
-};
 
 // ---- Local eSpeak-NG server integration (optional, falls back to browser TTS) ----
 const ESPEAK_SERVER = "http://localhost:8008";
@@ -203,9 +191,9 @@ async function speakIpaThenWord(sym, example) {
     await playBuffer(await r2.arrayBuffer());
   } catch (e) {
     // Local server không chạy hoặc lỗi -> fallback giọng đọc trình duyệt
-    // Sử dụng IPA_TO_TTS để trình duyệt đọc sát âm hơn thay vì đánh vần ký tự
-    const ttsSym = IPA_TO_TTS[sym] || sym;
-    speakSequence([ttsSym, example]);
+    // Trình duyệt không thể đọc chuẩn các ký tự phiên âm đơn lẻ (sẽ bị biến thành đọc tên chữ cái)
+    // Do đó tốt nhất là chỉ đọc từ ví dụ (example word)
+    speakSequence([example]);
   }
 }
 
