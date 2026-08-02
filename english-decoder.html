@@ -141,17 +141,17 @@ function shuffle(arr) {
   return a;
 }
 function speak(text) {
-  const url = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=en-US&q=${encodeURIComponent(text)}`;
+  const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
   const audio = new Audio(url);
   audio.play().catch(e => console.warn("TTS play failed:", e));
 }
 
-// Speaks a sequence of texts one after another using Google Translate TTS
+// Speaks a sequence of texts one after another using Youdao TTS
 function speakSequence(texts, { pauseMs = 350 } = {}) {
   const queue = texts.filter(Boolean);
   const speakNext = (i) => {
     if (i >= queue.length) return;
-    const url = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=en-US&q=${encodeURIComponent(queue[i])}`;
+    const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(queue[i])}&type=2`;
     const audio = new Audio(url);
     audio.onended = () => setTimeout(() => speakNext(i + 1), pauseMs);
     audio.onerror = () => speakNext(i + 1);
