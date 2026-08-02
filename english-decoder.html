@@ -117,8 +117,11 @@
 
   <div class="panel" id="panel-practice">
     <div class="promptline">
-      <div class="sub">Luyện đọc từ mục tiêu. Trình duyệt cần cấp quyền Microphone.</div>
+      <span class="caret">&gt;</span>
+      <input class="input" id="pracInput" placeholder="nhập một từ tiếng Anh cần luyện..." autocomplete="off" spellcheck="false" />
+      <button class="btn" id="pracParseBtn">Cập nhật</button>
     </div>
+    <div class="sub" style="margin-top: -10px; margin-bottom: 20px;">Luyện đọc từ mục tiêu. Trình duyệt cần cấp quyền Microphone (Google Chrome).</div>
     <div class="practice-box" id="practiceBox">
       <div class="target-word" id="pracTargetWord">...</div>
       <div class="target-ipa" id="pracTargetIpa">/.../</div>
@@ -592,11 +595,13 @@ const pracTargetWord = document.getElementById("pracTargetWord");
 const pracTargetIpa = document.getElementById("pracTargetIpa");
 const pracSpokenWord = document.getElementById("pracSpokenWord");
 const pracDiffResult = document.getElementById("pracDiffResult");
+const pracInput = document.getElementById("pracInput");
+const pracParseBtn = document.getElementById("pracParseBtn");
 
 function initSpeechPractice() {
   if (!state.data || !state.data.word) {
     pracTargetWord.textContent = "Chưa có từ";
-    pracTargetIpa.textContent = "Hãy sang tab Parse để tìm một từ trước";
+    pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
     return;
   }
   pracTargetWord.textContent = state.data.word;
@@ -604,7 +609,20 @@ function initSpeechPractice() {
   pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
   pracDiffResult.innerHTML = "";
   micBtn.classList.remove("recording");
+  pracInput.value = state.data.word;
 }
+
+pracParseBtn.addEventListener("click", async () => {
+  const w = pracInput.value.trim();
+  if (w) {
+    pracTargetWord.textContent = "Đang tra từ...";
+    pracTargetIpa.textContent = "/.../";
+    pracDiffResult.innerHTML = "";
+    await runParse(w);
+    initSpeechPractice();
+  }
+});
+pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
 
 function renderDiff(targetTokens, spokenTokens) {
   const n = targetTokens.length, m = spokenTokens.length;
