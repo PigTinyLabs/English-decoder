@@ -657,7 +657,7 @@ if (micBtn) {
     if (micBtn.classList.contains("recording")) {
       micBtn.classList.remove("recording");
       if (pracSpokenWord.textContent.includes("Đang nghe")) {
-        pracSpokenWord.textContent = "Đã dừng thu âm.";
+        pracSpokenWord.textContent = "Đang xử lý giọng nói...";
       }
       try { if (recognition) recognition.stop(); } catch(e) {}
       return;
