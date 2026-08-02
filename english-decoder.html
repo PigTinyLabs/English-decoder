@@ -141,27 +141,21 @@ function shuffle(arr) {
   return a;
 }
 function speak(text) {
-  if (!("speechSynthesis" in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US"; u.rate = 0.9;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(u);
+  const url = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=en-US&q=${encodeURIComponent(text)}`;
+  const audio = new Audio(url);
+  audio.play().catch(e => console.warn("TTS play failed:", e));
 }
 
-// Speaks a sequence of texts one after another (e.g. IPA symbol, then example word),
-// with a short pause in between. Browser TTS reads the raw symbol as best it can —
-// it's an approximation, not a true phonetic engine.
-function speakSequence(texts, { rate = 0.85, pauseMs = 350 } = {}) {
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
+// Speaks a sequence of texts one after another using Google Translate TTS
+function speakSequence(texts, { pauseMs = 350 } = {}) {
   const queue = texts.filter(Boolean);
   const speakNext = (i) => {
     if (i >= queue.length) return;
-    const u = new SpeechSynthesisUtterance(queue[i]);
-    u.lang = "en-US";
-    u.rate = rate;
-    u.onend = () => setTimeout(() => speakNext(i + 1), pauseMs);
-    window.speechSynthesis.speak(u);
+    const url = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=en-US&q=${encodeURIComponent(queue[i])}`;
+    const audio = new Audio(url);
+    audio.onended = () => setTimeout(() => speakNext(i + 1), pauseMs);
+    audio.onerror = () => speakNext(i + 1);
+    audio.play().catch(() => speakNext(i + 1));
   };
   speakNext(0);
 }
@@ -473,7 +467,7 @@ function render() {
         ${d.pos ? `<span class="pos">${d.pos}</span>` : ""}
         ${d.def ? `<div class="def">${d.def}</div>` : ""}
       </div>
-      <div class="label">build trace — click đúng thứ tự token để tái tạo /${cleanPhon}/</div>
+      <div class="label">build trace — click đúng thứ tự token để tái tạo <span style="text-transform: none; font-family: monospace;">/${cleanPhon}/</span></div>
       <div class="buildline" id="buildline"></div>
       ${!state.decoded ? `<div class="bank" id="bankBox"></div>` : ""}
       <div class="runrow">
