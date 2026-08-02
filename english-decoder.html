@@ -668,8 +668,14 @@ if (micBtn) {
     }
     if (!state.data || !state.data.word) return;
     
+    // Nếu đang thu âm thì bấm để dừng sớm
+    if (micBtn.classList.contains("recording")) {
+      try { recognition.stop(); } catch(e) {}
+      return;
+    }
+    
     micBtn.classList.add("recording");
-    pracSpokenWord.textContent = "Đang nghe...";
+    pracSpokenWord.textContent = "Đang nghe... (Bấm mic lần nữa để kết thúc)";
     pracDiffResult.innerHTML = "";
     
     try { recognition.start(); } catch(e) {}
@@ -710,12 +716,15 @@ if (micBtn) {
       }
     };
     recognition.onspeechend = () => {
-      recognition.stop();
+      try { recognition.stop(); } catch(e) {}
       micBtn.classList.remove("recording");
     };
     recognition.onerror = (event) => {
       micBtn.classList.remove("recording");
-      if (event.error !== 'no-speech') {
+      if (event.error === 'not-allowed') {
+         alert("⚠️ Trình duyệt đang chặn Microphone!\n\nVui lòng bấm vào biểu tượng 🔒 (hoặc nút Tuỳ chỉnh) trên thanh địa chỉ trang web và chọn 'Allow' (Cho phép) Microphone để có thể thu âm.");
+         pracSpokenWord.textContent = "Chưa cấp quyền Microphone.";
+      } else if (event.error !== 'no-speech') {
          pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
       } else {
          pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
