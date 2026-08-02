@@ -586,91 +586,68 @@ render();
 // ---- Speech Practice Logic -------------------------------------------------------
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-}
 
-const micBtn = document.getElementById("micBtn");
-const pracTargetWord = document.getElementById("pracTargetWord");
-const pracTargetIpa = document.getElementById("pracTargetIpa");
-const pracSpokenWord = document.getElementById("pracSpokenWord");
-const pracDiffResult = document.getElementById("pracDiffResult");
-const pracInput = document.getElementById("pracInput");
-const pracParseBtn = document.getElementById("pracParseBtn");
-const pracPlayBtn = document.getElementById("pracPlayBtn");
-
-function initSpeechPractice() {
-  if (!state.data || !state.data.word) {
-    pracTargetWord.textContent = "Chưa có từ";
-    pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
-    pracPlayBtn.style.display = "none";
-    return;
-  }
-  pracTargetWord.textContent = state.data.word;
-  pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
-  pracPlayBtn.style.display = "flex";
-  pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
-  pracDiffResult.innerHTML = "";
-  micBtn.classList.remove("recording");
-  pracInput.value = state.data.word;
-}
-
-pracParseBtn.addEventListener("click", async () => {
-  const w = pracInput.value.trim();
-  if (w) {
-    pracTargetWord.textContent = "Đang tra từ...";
-    pracTargetIpa.textContent = "/.../";
-    pracDiffResult.innerHTML = "";
-    pracPlayBtn.style.display = "none";
-    await runParse(w);
-    initSpeechPractice();
-  }
-});
-pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
-pracPlayBtn.addEventListener("click", playAudio);
-
-function renderDiff(targetTokens, spokenTokens) {
-  const n = targetTokens.length, m = spokenTokens.length;
-  const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      if (targetTokens[i-1] === spokenTokens[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
-      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
-    }
-  }
-  let i = n, j = m;
-  const result = [];
-  while (i > 0 && j > 0) {
-    if (targetTokens[i-1] === spokenTokens[j-1]) {
-      result.unshift({ type: "correct", val: targetTokens[i-1] });
-      i--; j--;
-    } else if (dp[i-1][j] >= dp[i][j-1]) {
-      result.unshift({ type: "missing", val: targetTokens[i-1] });
-      i--;
-    } else {
-      result.unshift({ type: "wrong", val: spokenTokens[j-1] });
-      j--;
-    }
-  }
-  while (i > 0) { result.unshift({ type: "missing", val: targetTokens[i-1] }); i--; }
-  while (j > 0) { result.unshift({ type: "wrong", val: spokenTokens[j-1] }); j--; }
+function setupRecognition() {
+  if (!SpeechRecognition) return null;
+  const rec = new SpeechRecognition();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
   
-  let html = "/";
-  for (const r of result) {
-    if (r.type === "correct") html += `<span class="correct">${r.val}</span>`;
-    else if (r.type === "wrong") html += `<span class="wrong" title="bạn đã phát âm dư âm này">${r.val}</span>`;
-    else if (r.type === "missing") html += `<span class="missing" title="bạn phát âm sai hoặc thiếu âm này">${r.val}</span>`;
-  }
-  html += "/";
-  pracDiffResult.innerHTML = html;
+  rec.onresult = async (event) => {
+    const spoken = event.results[0][0].transcript.trim().toLowerCase();
+    const cleanSpoken = spoken.replace(/[.,!?]/g, "");
+    pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
+    micBtn.classList.remove("recording");
+    
+    if (cleanSpoken === state.data.word.toLowerCase()) {
+      renderDiff(state.targetTokens, state.targetTokens);
+    } else {
+      pracDiffResult.innerHTML = `<span style="font-size: 13px; color: var(--muted)">Đang phân tích lỗi sai...</span>`;
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanSpoken)}`);
+        if (!res.ok) throw new Error("Not found");
+        const json = await res.json();
+        let spokenPhonetic = "";
+        for (const item of json) {
+          if (item.phonetic) { spokenPhonetic = item.phonetic; break; }
+          if (item.phonetics) {
+            const p = item.phonetics.find(x => x.text);
+            if (p) { spokenPhonetic = p.text; break; }
+          }
+        }
+        if (!spokenPhonetic) throw new Error("No IPA");
+        const spokenTokens = tokenizeIpa(spokenPhonetic.replace(/[/[\]]/g, ""));
+        renderDiff(state.targetTokens, spokenTokens);
+      } catch (e) {
+        pracDiffResult.innerHTML = `<span class="wrong" style="font-size: 14px;">Không tìm thấy phiên âm cho từ "${cleanSpoken}"</span>`;
+      }
+    }
+  };
+  rec.onspeechend = () => {
+    try { rec.stop(); } catch(e) {}
+    micBtn.classList.remove("recording");
+  };
+  rec.onend = () => {
+    micBtn.classList.remove("recording");
+  };
+  rec.onerror = (event) => {
+    micBtn.classList.remove("recording");
+    if (event.error === 'not-allowed') {
+       alert("⚠️ Trình duyệt đang chặn Microphone!\n\nVui lòng bấm vào biểu tượng 🔒 (hoặc nút Tuỳ chỉnh) trên thanh địa chỉ trang web và chọn 'Allow' (Cho phép) Microphone để có thể thu âm.");
+       pracSpokenWord.textContent = "Chưa cấp quyền Microphone.";
+    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+       pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
+    } else if (event.error === 'no-speech') {
+       pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
+    }
+  };
+  return rec;
 }
 
 if (micBtn) {
   micBtn.addEventListener("click", () => {
-    if (!recognition) {
+    if (!SpeechRecognition) {
       alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng dùng Google Chrome hoặc Edge.");
       return;
     }
@@ -682,9 +659,14 @@ if (micBtn) {
       if (pracSpokenWord.textContent.includes("Đang nghe")) {
         pracSpokenWord.textContent = "Đã dừng thu âm.";
       }
-      try { recognition.stop(); } catch(e) {}
+      try { if (recognition) recognition.stop(); } catch(e) {}
       return;
     }
+    
+    if (recognition) {
+      try { recognition.abort(); } catch(e) {}
+    }
+    recognition = setupRecognition();
     
     micBtn.classList.add("recording");
     pracSpokenWord.textContent = "Đang nghe... (Bấm mic lần nữa để kết thúc)";
@@ -692,60 +674,6 @@ if (micBtn) {
     
     try { recognition.start(); } catch(e) {}
   });
-  
-  if (recognition) {
-    recognition.onresult = async (event) => {
-      const spoken = event.results[0][0].transcript.trim().toLowerCase();
-      // Loại bỏ các dấu câu
-      const cleanSpoken = spoken.replace(/[.,!?]/g, "");
-      pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
-      micBtn.classList.remove("recording");
-      
-      if (cleanSpoken === state.data.word.toLowerCase()) {
-        renderDiff(state.targetTokens, state.targetTokens);
-      } else {
-        pracDiffResult.innerHTML = `<span style="font-size: 13px; color: var(--muted)">Đang phân tích lỗi sai...</span>`;
-        try {
-          // Lấy phiên âm của từ người dùng vừa nói từ dictionaryapi.dev
-          const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanSpoken)}`);
-          if (!res.ok) throw new Error("Not found");
-          const json = await res.json();
-          let spokenPhonetic = "";
-          for (const item of json) {
-            if (item.phonetic) { spokenPhonetic = item.phonetic; break; }
-            if (item.phonetics) {
-              const p = item.phonetics.find(x => x.text);
-              if (p) { spokenPhonetic = p.text; break; }
-            }
-          }
-          if (!spokenPhonetic) throw new Error("No IPA");
-          
-          const spokenTokens = tokenizeIpa(spokenPhonetic.replace(/[/[\]]/g, ""));
-          renderDiff(state.targetTokens, spokenTokens);
-        } catch (e) {
-          pracDiffResult.innerHTML = `<span class="wrong" style="font-size: 14px;">Không tìm thấy phiên âm cho từ "${cleanSpoken}"</span>`;
-        }
-      }
-    };
-    recognition.onspeechend = () => {
-      try { recognition.stop(); } catch(e) {}
-      micBtn.classList.remove("recording");
-    };
-    recognition.onend = () => {
-      micBtn.classList.remove("recording");
-    };
-    recognition.onerror = (event) => {
-      micBtn.classList.remove("recording");
-      if (event.error === 'not-allowed') {
-         alert("⚠️ Trình duyệt đang chặn Microphone!\n\nVui lòng bấm vào biểu tượng 🔒 (hoặc nút Tuỳ chỉnh) trên thanh địa chỉ trang web và chọn 'Allow' (Cho phép) Microphone để có thể thu âm.");
-         pracSpokenWord.textContent = "Chưa cấp quyền Microphone.";
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-         pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
-      } else if (event.error === 'no-speech') {
-         pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
-      }
-    };
-  }
 }
 </script>
 </body>
