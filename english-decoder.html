@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>English Decoder :: IPA Compiler</title>
+<script src="https://unpkg.com/compromise"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
   :root {
@@ -91,6 +92,18 @@
   .wrong { color: var(--red); text-decoration: line-through; opacity: 0.8; }
   .missing { color: var(--red); border-bottom: 2px dashed var(--red); opacity: 0.8; }
   
+  /* Grammar Tab Styles */
+  .syntax-subject { color: var(--emerald); font-weight: bold; padding: 2px 4px; background: rgba(52,211,153,0.1); border-radius: 4px;}
+  .syntax-verb { color: var(--red); font-weight: bold; padding: 2px 4px; background: rgba(248,113,113,0.1); border-radius: 4px;}
+  .syntax-object { color: var(--amber); font-weight: bold; padding: 2px 4px; background: rgba(251,191,36,0.1); border-radius: 4px;}
+  .syntax-other { color: var(--text); }
+  .tense-quiz-text { font-size: 16px; margin-bottom: 12px; line-height: 1.8; }
+  .tense-input { width: 140px; text-align: center; font-weight: bold; color: var(--cyan); background: transparent; border: none; border-bottom: 2px solid var(--border); outline: none; font-family: 'JetBrains Mono', monospace; font-size: 16px; }
+  .tense-input:focus { border-bottom-color: var(--cyan); }
+  .log-item { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; font-size: 13.5px; }
+  .log-item-title { color: var(--text); font-weight: bold; }
+  .log-item-count { color: var(--red); background: rgba(248,113,113,0.1); padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+  
   /* Mobile Responsive */
   @media (max-width: 600px) {
     body { padding: 14px; }
@@ -119,6 +132,7 @@
     <button class="tab active" data-tab="parser">word_parser.ts</button>
     <button class="tab" data-tab="board">ipa_board.ts</button>
     <button class="tab" data-tab="practice">speech_practice.ts</button>
+    <button class="tab" data-tab="grammar">grammar_debugger.ts</button>
   </div>
 
   <div class="panel active" id="panel-parser">
@@ -156,6 +170,50 @@
   <div class="panel" id="panel-board">
     <div class="status">Click vào ký hiệu để nghe ví dụ (dùng giọng đọc trình duyệt).</div>
     <div id="boardBox"></div>
+  </div>
+
+  <div class="panel" id="panel-grammar">
+    <div class="board-group">
+      <div class="board-title">1. Syntax Highlighter (Bóc tách S-V-O)</div>
+      <div class="promptline">
+        <span class="caret">&gt;</span>
+        <input class="input" id="syntaxInput" placeholder="Nhập một câu tiếng Anh..." value="The quick brown fox jumps over the lazy dog" autocomplete="off" spellcheck="false" />
+        <button class="btn" id="syntaxParseBtn">Analyze</button>
+      </div>
+      <div id="syntaxResult" style="margin-top: 10px; font-size: 16px; line-height: 1.6; min-height: 40px; padding: 12px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+        <span class="sub">Kết quả bóc tách sẽ hiện ở đây...</span>
+      </div>
+      <div style="margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 12px;">
+        <span><span class="syntax-subject">Subject (Chủ ngữ)</span></span>
+        <span><span class="syntax-verb">Verb (Động từ)</span></span>
+        <span><span class="syntax-object">Object (Tân ngữ)</span></span>
+      </div>
+    </div>
+    
+    <div class="board-group" style="margin-top: 28px;">
+      <div class="board-title">2. Tense Logic Engine (Vá lỗi 5 Thì cơ bản)</div>
+      <div class="promptline">
+        <select class="input" id="tenseSelect" style="max-width: 200px;">
+          <option value="present_simple">Hiện tại đơn (Present Simple)</option>
+          <option value="present_continuous">Hiện tại tiếp diễn (Present Continuous)</option>
+          <option value="past_simple">Quá khứ đơn (Past Simple)</option>
+          <option value="future_simple">Tương lai đơn (Future Simple)</option>
+          <option value="present_perfect">Hiện tại hoàn thành (Present Perfect)</option>
+        </select>
+        <button class="btn" id="generateTenseBtn">Generate Quiz</button>
+      </div>
+      <div id="tenseQuizBox" style="margin-top: 10px; min-height: 80px; padding: 16px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+        <div class="sub">Chọn thì và bấm Generate Quiz để lấy câu hỏi.</div>
+      </div>
+    </div>
+    
+    <div class="board-group" style="margin-top: 28px; border-top: 1px dashed var(--border); padding-top: 24px;">
+      <div class="board-title" style="color: var(--amber);">3. Error Logging Dashboard</div>
+      <div class="sub" style="margin-bottom: 12px;">Thống kê tần suất mắc lỗi ngữ pháp của bạn (lưu trên LocalStorage). Để triệt tiêu lỗi tận gốc!</div>
+      <div id="errorLogDashboard" style="display: block;">
+      </div>
+      <button class="btn ghost" id="clearLogsBtn" style="margin-top: 12px;">Reset Data</button>
+    </div>
   </div>
 </div>
 
@@ -421,6 +479,8 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
     if (tab.dataset.tab === "practice") {
       if (typeof initSpeechPractice === "function") initSpeechPractice();
+    } else if (tab.dataset.tab === "grammar") {
+      renderErrorDashboard();
     }
   });
 });
@@ -770,6 +830,175 @@ if (micBtn) {
     }
   });
 }
+// ---- Grammar Debugger Logic -------------------------------------------------------
+
+const syntaxInput = document.getElementById("syntaxInput");
+const syntaxParseBtn = document.getElementById("syntaxParseBtn");
+const syntaxResult = document.getElementById("syntaxResult");
+
+function parseSyntax() {
+  const text = syntaxInput.value.trim();
+  if (!text) return;
+  
+  if (typeof window.nlp === 'undefined') {
+    syntaxResult.innerHTML = '<span style="color: var(--red);">Error: Không tải được thư viện compromise.js. Cần có mạng internet.</span>';
+    return;
+  }
+  
+  const doc = window.nlp(text);
+  const data = doc.json();
+  
+  let parts = [];
+  let isVerbSeen = false;
+  
+  data.forEach(phrase => {
+    if (phrase.terms) {
+      phrase.terms.forEach(term => {
+        let w = (term.pre || "") + term.text + (term.post || "");
+        let tags = term.tags || [];
+        
+        if (tags.includes('Verb')) {
+          parts.push(`<span class="syntax-verb" title="Verb">${w}</span>`);
+          isVerbSeen = true;
+        } else if (tags.includes('Noun') || tags.includes('Pronoun')) {
+          if (!isVerbSeen) {
+            parts.push(`<span class="syntax-subject" title="Subject">${w}</span>`);
+          } else {
+            parts.push(`<span class="syntax-object" title="Object">${w}</span>`);
+          }
+        } else {
+          parts.push(`<span class="syntax-other">${w}</span>`);
+        }
+      });
+    }
+  });
+  
+  syntaxResult.innerHTML = parts.join('');
+}
+
+if (syntaxParseBtn) syntaxParseBtn.addEventListener("click", parseSyntax);
+if (syntaxInput) syntaxInput.addEventListener("keydown", e => { if (e.key === "Enter") parseSyntax(); });
+
+const tenseSelect = document.getElementById("tenseSelect");
+const generateTenseBtn = document.getElementById("generateTenseBtn");
+const tenseQuizBox = document.getElementById("tenseQuizBox");
+const errorLogDashboard = document.getElementById("errorLogDashboard");
+const clearLogsBtn = document.getElementById("clearLogsBtn");
+
+const TENSE_QUIZZES = {
+  present_simple: [
+    { q: "He ___ (go) to school every day.", a: "goes", errorType: "Quên thêm 'es' cho ngôi thứ 3 số ít" },
+    { q: "They ___ (not / like) pizza.", a: "do not like", alt: "don't like", errorType: "Sai trợ động từ phủ định (do/does)" },
+    { q: "___ she (play) tennis on weekends?", a: "does she play", errorType: "Sai cấu trúc câu hỏi với Does" }
+  ],
+  present_continuous: [
+    { q: "Look! The dog ___ (run) in the yard.", a: "is running", alt: "is running", errorType: "Thiếu to be hoặc quên gấp đôi phụ âm" },
+    { q: "I ___ (study) right now.", a: "am studying", alt: "am studying", errorType: "Chia sai động từ to be (am/is/are)" }
+  ],
+  past_simple: [
+    { q: "Yesterday, I ___ (see) a movie.", a: "saw", errorType: "Không nhớ động từ bất quy tắc" },
+    { q: "She ___ (not / go) to work last week.", a: "did not go", alt: "didn't go", errorType: "Sai trợ động từ quá khứ (did)" }
+  ],
+  future_simple: [
+    { q: "I think it ___ (rain) tomorrow.", a: "will rain", alt: "will rain", errorType: "Sai cấu trúc will + V" },
+    { q: "___ you (help) me with this?", a: "will you help", alt: "will", errorType: "Sai cấu trúc câu hỏi tương lai" }
+  ],
+  present_perfect: [
+    { q: "I ___ (finish) my homework already.", a: "have finished", alt: "have finished", errorType: "Sai cấu trúc have/has + V3" },
+    { q: "She ___ (never / be) to Japan.", a: "has never been", alt: "has never been", errorType: "Chia sai have/has hoặc V3 (be -> been)" }
+  ]
+};
+
+let currentQuiz = null;
+
+function generateQuiz() {
+  const tense = tenseSelect.value;
+  const list = TENSE_QUIZZES[tense];
+  currentQuiz = list[Math.floor(Math.random() * list.length)];
+  
+  const parts = currentQuiz.q.split("___");
+  
+  tenseQuizBox.innerHTML = `
+    <div class="tense-quiz-text">
+      ${parts[0]} <input type="text" class="tense-input" id="quizInput" autocomplete="off" spellcheck="false" /> ${parts[1] || ""}
+    </div>
+    <button class="btn" id="checkQuizBtn" style="margin-top: 8px;">Kiểm tra</button>
+    <div id="quizResult" style="margin-top: 12px; font-weight: bold;"></div>
+  `;
+  
+  const checkBtn = document.getElementById("checkQuizBtn");
+  const quizInput = document.getElementById("quizInput");
+  
+  quizInput.focus();
+  
+  checkBtn.addEventListener("click", checkAnswer);
+  quizInput.addEventListener("keydown", e => { if (e.key === "Enter") checkAnswer(); });
+}
+
+function checkAnswer() {
+  if (!currentQuiz) return;
+  const quizInput = document.getElementById("quizInput");
+  const quizResult = document.getElementById("quizResult");
+  const userAns = quizInput.value.trim().toLowerCase();
+  const correctAns = currentQuiz.a.toLowerCase();
+  const correctAlt = currentQuiz.alt ? currentQuiz.alt.toLowerCase() : correctAns;
+  
+  if (userAns === correctAns || userAns === correctAlt) {
+    quizResult.innerHTML = `<span style="color: var(--emerald);">✓ Chính xác!</span>`;
+    quizInput.style.borderColor = "var(--emerald)";
+    quizInput.style.color = "var(--emerald)";
+  } else {
+    quizResult.innerHTML = `<span style="color: var(--red);">✗ Sai rồi. Đáp án đúng: <b>${currentQuiz.a}</b></span>`;
+    quizInput.style.borderColor = "var(--red)";
+    quizInput.style.color = "var(--red)";
+    logError(currentQuiz.errorType);
+  }
+}
+
+if (generateTenseBtn) generateTenseBtn.addEventListener("click", generateQuiz);
+
+function logError(errorType) {
+  let errors = JSON.parse(localStorage.getItem("grammar_errors") || "{}");
+  if (!errors[errorType]) errors[errorType] = 0;
+  errors[errorType]++;
+  localStorage.setItem("grammar_errors", JSON.stringify(errors));
+  
+  if (document.getElementById("panel-grammar").classList.contains("active")) {
+    renderErrorDashboard();
+  }
+}
+
+function renderErrorDashboard() {
+  if (!errorLogDashboard) return;
+  let errors = JSON.parse(localStorage.getItem("grammar_errors") || "{}");
+  let keys = Object.keys(errors).sort((a,b) => errors[b] - errors[a]);
+  
+  if (keys.length === 0) {
+    errorLogDashboard.innerHTML = `<div class="sub" style="font-style: italic; background: var(--surface-alt); padding: 12px; border-radius: 6px; text-align: center;">🎉 Giỏi quá! Chưa có lỗi nào được ghi nhận.</div>`;
+    return;
+  }
+  
+  let html = "";
+  for (let k of keys) {
+    html += `
+      <div class="log-item">
+        <span class="log-item-title">${k}</span>
+        <span class="log-item-count">${errors[k]} lỗi</span>
+      </div>
+    `;
+  }
+  errorLogDashboard.innerHTML = html;
+}
+
+if (clearLogsBtn) {
+  clearLogsBtn.addEventListener("click", () => {
+    localStorage.removeItem("grammar_errors");
+    renderErrorDashboard();
+  });
+}
+
+// Init on load just in case
+renderErrorDashboard();
 </script>
 </body>
 </html>
