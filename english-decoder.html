@@ -603,6 +603,82 @@ render();
 // ---- Speech Practice Logic -------------------------------------------------------
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
+
+const micBtn = document.getElementById("micBtn");
+const pracTargetWord = document.getElementById("pracTargetWord");
+const pracTargetIpa = document.getElementById("pracTargetIpa");
+const pracSpokenWord = document.getElementById("pracSpokenWord");
+const pracDiffResult = document.getElementById("pracDiffResult");
+const pracInput = document.getElementById("pracInput");
+const pracParseBtn = document.getElementById("pracParseBtn");
+const pracPlayBtn = document.getElementById("pracPlayBtn");
+
+function initSpeechPractice() {
+  if (!state.data || !state.data.word) {
+    pracTargetWord.textContent = "Chưa có từ";
+    pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
+    pracPlayBtn.style.display = "none";
+    return;
+  }
+  pracTargetWord.textContent = state.data.word;
+  pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
+  pracPlayBtn.style.display = "flex";
+  pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
+  pracDiffResult.innerHTML = "";
+  micBtn.classList.remove("recording");
+  pracInput.value = state.data.word;
+}
+
+pracParseBtn.addEventListener("click", async () => {
+  const w = pracInput.value.trim();
+  if (w) {
+    pracTargetWord.textContent = "Đang tra từ...";
+    pracTargetIpa.textContent = "/.../";
+    pracDiffResult.innerHTML = "";
+    pracPlayBtn.style.display = "none";
+    await runParse(w);
+    initSpeechPractice();
+  }
+});
+pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
+pracPlayBtn.addEventListener("click", playAudio);
+
+function renderDiff(targetTokens, spokenTokens) {
+  const n = targetTokens.length, m = spokenTokens.length;
+  const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (targetTokens[i-1] === spokenTokens[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  let i = n, j = m;
+  const result = [];
+  while (i > 0 && j > 0) {
+    if (targetTokens[i-1] === spokenTokens[j-1]) {
+      result.unshift({ type: "correct", val: targetTokens[i-1] });
+      i--; j--;
+    } else if (dp[i-1][j] >= dp[i][j-1]) {
+      result.unshift({ type: "missing", val: targetTokens[i-1] });
+      i--;
+    } else {
+      result.unshift({ type: "wrong", val: spokenTokens[j-1] });
+      j--;
+    }
+  }
+  while (i > 0) { result.unshift({ type: "missing", val: targetTokens[i-1] }); i--; }
+  while (j > 0) { result.unshift({ type: "wrong", val: spokenTokens[j-1] }); j--; }
+  
+  let html = "/";
+  for (const r of result) {
+    if (r.type === "correct") html += `<span class="correct">${r.val}</span>`;
+    else if (r.type === "wrong") html += `<span class="wrong" title="bạn đã phát âm dư âm này">${r.val}</span>`;
+    else if (r.type === "missing") html += `<span class="missing" title="bạn phát âm sai hoặc thiếu âm này">${r.val}</span>`;
+  }
+  html += "/";
+  pracDiffResult.innerHTML = html;
+}
+
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = 'en-US';
