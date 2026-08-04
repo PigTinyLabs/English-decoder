@@ -1331,6 +1331,10 @@
 
     let db = null;
     const isFirebaseConfigured = !!firebaseConfig.apiKey;
+    if (isFirebaseConfigured) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    }
 
     // Profile System (Session Storage & Welcome Screen)
     let currentProfile = sessionStorage.getItem("current_profile");
@@ -1363,22 +1367,43 @@
         welcomeEl.style.display = "flex";
         
         const grid = document.getElementById("profileGrid");
-        let html = "";
-        profileList.forEach(p => {
+        
+        function renderWelcomeGrid(list) {
+          let html = "";
+          list.forEach(p => {
+            html += `
+              <div class="profile-card" onclick="selectProfile('${p.replace(/'/g, "\\'")}')">
+                <div class="profile-icon">👤</div>
+                <div class="profile-name">${p}</div>
+              </div>
+            `;
+          });
           html += `
-            <div class="profile-card" onclick="selectProfile('${p.replace(/'/g, "\\'")}')">
-              <div class="profile-icon">👤</div>
-              <div class="profile-name">${p}</div>
+            <div class="profile-card profile-add" onclick="addProfile()">
+              <div class="profile-icon">➕</div>
+              <div class="profile-name">Thêm User</div>
             </div>
           `;
-        });
-        html += `
-          <div class="profile-card profile-add" onclick="addProfile()">
-            <div class="profile-icon">➕</div>
-            <div class="profile-name">Thêm User</div>
-          </div>
-        `;
-        grid.innerHTML = html;
+          grid.innerHTML = html;
+        }
+
+        renderWelcomeGrid(profileList);
+
+        if (db) {
+          db.collection("users").doc("_global_profiles_").onSnapshot(doc => {
+            if (doc.exists) {
+              const data = doc.data();
+              if (data.names && Array.isArray(data.names)) {
+                const merged = [...new Set([...profileList, ...data.names])];
+                if (merged.length !== profileList.length) {
+                  profileList = merged;
+                  localStorage.setItem("profile_list", JSON.stringify(profileList));
+                  renderWelcomeGrid(profileList);
+                }
+              }
+            }
+          });
+        }
         return false;
       }
       
@@ -1400,9 +1425,12 @@
     
     const isProfileActive = initProfile();
 
-    if (isFirebaseConfigured && isProfileActive) {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
+    if (db && isProfileActive) {
+      // Đăng ký tên user lên danh sách toàn cầu
+      db.collection("users").doc("_global_profiles_").set({
+        names: firebase.firestore.FieldValue.arrayUnion(currentProfile)
+      }, { merge: true }).catch(err => console.error(err));
+
       loadDataFromFirebase();
       
       // Online Presence System
