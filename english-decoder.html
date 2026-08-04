@@ -2422,7 +2422,7 @@
 
     if (generateDailyBtn) {
       generateDailyBtn.addEventListener("click", async () => {
-        const key = window.ENV?.GEMINI_API_KEY;
+        const key = (window.ENV?.GEMINI_API_KEY || "").trim();
         if (!key) { alert("Không tìm thấy Gemini API Key trong hệ thống (.env)!"); return; }
 
         // Check if we already have today's quiz generated
@@ -2484,7 +2484,7 @@
         "exp": "Giải thích chi tiết tại sao lại chọn đáp án này bằng tiếng Việt"
       }`;
 
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`, {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${key}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
