@@ -1493,6 +1493,9 @@
             localStorage.setItem(`${currentProfile}_grammar_errors`, JSON.stringify(data.grammar_errors));
             renderErrorDashboard();
           }
+          if (data.gemini_daily_quiz) {
+            localStorage.setItem(`${currentProfile}_gemini_daily_quiz`, JSON.stringify(data.gemini_daily_quiz));
+          }
         }
       });
     }
@@ -2467,14 +2470,18 @@
           const rawText = json.candidates[0].content.parts[0].text;
 
           // Attempt to parse JSON
-          const questions = JSON.parse(rawText);
-          todayQuizData = questions;
+          const qList = JSON.parse(rawText);
+          const dateStr = getTodayStr();
 
-          localStorage.setItem(`${currentProfile}_gemini_daily_quiz`, JSON.stringify({
-            date: getTodayStr(),
+          const quizDataToSave = {
+            date: dateStr,
             isReview: isReviewDay,
-            questions: todayQuizData
-          }));
+            questions: qList
+          };
+          localStorage.setItem(`${currentProfile}_gemini_daily_quiz`, JSON.stringify(quizDataToSave));
+          if (isFirebaseConfigured) syncDataToFirebase("gemini_daily_quiz", quizDataToSave);
+          
+          todayQuizData = qList;
 
           renderQuiz();
         } catch (e) {
