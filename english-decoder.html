@@ -1,585 +1,1837 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>English Decoder :: IPA Compiler</title>
-<script src="https://unpkg.com/compromise"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-  :root {
-    --bg: #0a0e14; --surface: #12161f; --surface-alt: #171c26;
-    --border: #232a37; --text: #e7e9ee; --muted: #8b93a3;
-    --emerald: #34d399; --amber: #fbbf24; --red: #f87171; --cyan: #38bdf8;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>English Decoder :: IPA Compiler</title>
+  <!-- Firebase SDKs (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/compromise"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+    :root {
+      --bg-1: #0f172a;
+      --bg-2: #1e1b4b;
+      --surface: rgba(15, 23, 42, 0.6);
+      --surface-alt: rgba(30, 41, 59, 0.5);
+      --border: rgba(255, 255, 255, 0.1);
+      --border-glow: rgba(56, 189, 248, 0.3);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --cyan: #38bdf8;
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      padding: 28px;
+      min-height: 100vh;
+    }
+
+    #app {
+      max-width: 1100px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 32px;
+      align-items: start;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* Decorative background shapes */
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      z-index: 0;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    body::before {
+      top: -100px;
+      left: -100px;
+      width: 400px;
+      height: 400px;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    body::after {
+      bottom: -100px;
+      right: -100px;
+      width: 400px;
+      height: 400px;
+      background: rgba(16, 185, 129, 0.15);
+    }
+
+    .sidebar {
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 16px;
+      padding: 24px 16px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 28px;
+    }
+
+    .header {
+      position: relative;
+      padding-bottom: 16px;
+      border-bottom: 1px dashed var(--border);
+      margin: 0 8px;
+    }
+
+    .title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+
+    .title span {
+      background: linear-gradient(to right, var(--emerald), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tab span.icon {
+      font-size: 18px;
+      opacity: 0.7;
+      transition: transform 0.2s;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab:hover span.icon {
+      transform: scale(1.1);
+      opacity: 1;
+    }
+
+    .tab.active {
+      color: var(--text);
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab.active span.icon {
+      opacity: 1;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(15, 23, 42, 0.4);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      display: none;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: var(--glass-shadow);
+      position: relative;
+      overflow: hidden;
+      min-height: 500px;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+      opacity: 0.5;
+    }
+
+    .panel.active {
+      display: block;
+      animation: panelFadeIn 0.4s ease-out;
+    }
+
+    @keyframes panelFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .promptline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .caret {
+      color: var(--emerald);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .input {
+      flex: 1;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: all 0.2s;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 10px 18px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+      filter: brightness(1.1);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn.ghost {
+      background: var(--surface-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    .btn.ghost:hover {
+      border-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .status.err {
+      color: var(--red);
+    }
+
+    .worddef {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .word {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .pos {
+      color: var(--amber);
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .def {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .buildline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 44px;
+      padding: 10px 12px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .tok {
+      font-size: 17px;
+      padding: 4px 9px;
+      border-radius: 5px;
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--emerald);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+
+    .tok.stress {
+      color: var(--amber);
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .cursor {
+      width: 2px;
+      height: 20px;
+      background: var(--text);
+      animation: blink 1s step-start infinite;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    .bank {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .chip {
+      font-size: 17px;
+      padding: 7px 13px;
+      border-radius: 6px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform .1s, border-color .1s;
+    }
+
+    .chip:hover {
+      border-color: var(--cyan);
+      transform: translateY(-1px);
+    }
+
+    .chip.used {
+      opacity: 0.25;
+      pointer-events: none;
+    }
+
+    .chip.error {
+      border-color: var(--red);
+      color: var(--red);
+      animation: shake .3s;
+    }
+
+    @keyframes shake {
+      25% {
+        transform: translateX(-4px);
+      }
+
+      75% {
+        transform: translateX(4px);
+      }
+    }
+
+    .runrow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .locked {
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    .unlocked {
+      color: var(--emerald);
+      font-size: 12.5px;
+    }
+
+    .log {
+      margin-top: 22px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .logrow {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--muted);
+      padding: 4px 0;
+    }
+
+    .logrow b {
+      color: var(--text);
+    }
+
+    .board-group {
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .board-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      color: var(--emerald);
+      margin-bottom: 16px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .board-title::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 16px;
+      background: var(--emerald);
+      border-radius: 2px;
+    }
+
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      gap: 8px;
+    }
+
+    .board-cell {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .board-cell:hover {
+      border-color: var(--emerald);
+    }
+
+    .board-sym {
+      font-size: 18px;
+      display: block;
+    }
+
+    .board-ex {
+      font-size: 10.5px;
+      color: var(--muted);
+      display: block;
+      margin-top: 3px;
+    }
+
+    .board-mouth {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .mouth-svg {
+      width: 44px;
+      height: 44px;
+    }
+
+    /* Practice Tab Styles */
+    .practice-box {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .target-word {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Space Grotesk', sans-serif;
+      margin-bottom: 4px;
+    }
+
+    .target-ipa {
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    .mic-btn {
+      background: var(--surface-alt);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      width: 64px;
+      height: 64px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+
+    .mic-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .mic-btn.recording {
+      border-color: var(--red);
+      color: var(--red);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 15px rgba(248, 113, 113, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+      }
+    }
+
+    .diff-box {
+      background: var(--bg);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      min-height: 80px;
+    }
+
+    .diff-word {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: var(--muted);
+    }
+
+    .diff-result {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    .correct {
+      color: var(--emerald);
+    }
+
+    .wrong {
+      color: var(--red);
+      text-decoration: line-through;
+      opacity: 0.8;
+    }
+
+    .missing {
+      color: var(--red);
+      border-bottom: 2px dashed var(--red);
+      opacity: 0.8;
+    }
+
+    /* Grammar Tab Styles */
+    .syntax-subject {
+      color: var(--emerald);
+      font-weight: bold;
+      padding: 2px 4px;
+      background: rgba(52, 211, 153, 0.1);
+      border-radius: 4px;
+    }
+
+    .syntax-verb {
+      color: var(--red);
+      font-weight: bold;
+      padding: 2px 4px;
+      background: rgba(248, 113, 113, 0.1);
+      border-radius: 4px;
+    }
+
+    .syntax-object {
+      color: var(--amber);
+      font-weight: bold;
+      padding: 2px 4px;
+      background: rgba(251, 191, 36, 0.1);
+      border-radius: 4px;
+    }
+
+    .syntax-other {
+      color: var(--text);
+    }
+
+    .tense-quiz-text {
+      font-size: 16px;
+      margin-bottom: 12px;
+      line-height: 1.8;
+    }
+
+    .tense-input {
+      width: 140px;
+      text-align: center;
+      font-weight: bold;
+      color: var(--cyan);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid var(--border);
+      outline: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+    }
+
+    .tense-input:focus {
+      border-bottom-color: var(--cyan);
+    }
+
+    .log-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13.5px;
+    }
+
+    .log-item-title {
+      color: var(--text);
+      font-weight: bold;
+    }
+
+    .log-item-count {
+      color: var(--red);
+      background: rgba(248, 113, 113, 0.1);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* Quiz & Vocab Styles */
+    .quiz-card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .quiz-q {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .quiz-opt {
+      display: block;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .quiz-opt:hover {
+      border-color: var(--cyan);
+      background: rgba(56, 189, 248, 0.1);
+      transform: translateX(2px);
+    }
+
+    .quiz-opt.selected {
+      border-color: var(--emerald);
+      background: rgba(16, 185, 129, 0.15);
+      box-shadow: 0 0 0 1px var(--emerald);
+    }
+
+    .quiz-opt.correct {
+      border-color: var(--emerald);
+      background: linear-gradient(to right, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+      font-weight: bold;
+    }
+
+    .quiz-opt.wrong {
+      border-color: var(--red);
+      background: linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
+      text-decoration: line-through;
+      opacity: 0.8;
+    }
+
+    .quiz-exp {
+      font-size: 14px;
+      color: var(--text);
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      display: none;
+      background: rgba(56, 189, 248, 0.05);
+      padding: 12px;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+
+    .streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+      color: var(--amber);
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .vocab-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .vocab-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(30, 41, 59, 0.4);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+    }
+
+    .vocab-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .vocab-word {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--emerald);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .vocab-mean {
+      font-size: 15px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .vocab-mean.hidden {
+      filter: blur(6px);
+      opacity: 0.6;
+      transition: all 0.3s;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .vocab-mean.hidden:hover {
+      filter: blur(2px);
+      opacity: 0.9;
+    }
+
+    .vocab-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: scale(1.05);
+    }
+
+    /* Auth UI */
+    .auth-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .auth-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+
+    .auth-name {
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    /* Floating Vocab Modal & Highlight */
+    .fab-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--emerald), #059669);
+      color: #fff;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(52, 211, 153, 0.4);
+      cursor: pointer;
+      z-index: 1000;
+      transition: all 0.3s;
+      border: none;
+    }
+
+    .fab-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(52, 211, 153, 0.6);
+    }
+
+    .vocab-modal {
+      position: fixed;
+      bottom: 100px;
+      right: 30px;
+      width: 320px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .vocab-modal.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .vocab-hl {
+      color: var(--emerald);
+      font-weight: bold;
+      cursor: pointer;
+      border-bottom: 1px dashed var(--emerald);
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .vocab-hl:hover {
+      color: var(--cyan);
+      border-bottom-color: var(--cyan);
+      background: rgba(52, 211, 153, 0.1);
+      border-radius: 2px;
+    }
+
+    .tooltip-box {
+      position: fixed;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: normal;
+      pointer-events: none;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.2s;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      transform: translate(-50%, -100%);
+      margin-top: -10px;
+      max-width: 250px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .tooltip-box.show {
+      opacity: 1;
+    }
+
+    .tooltip-box::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -8px;
+      border-width: 8px;
+      border-style: solid;
+      border-color: var(--surface-alt) transparent transparent transparent;
+    }
+
+    .tooltip-box::before {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -9px;
+      border-width: 9px;
+      border-style: solid;
+      border-color: var(--border) transparent transparent transparent;
+      z-index: -1;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 900px) {
+      #app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+
+      .tabs {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+
+      .tab {
+        white-space: nowrap;
+      }
+
+      .topbar {
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 14px;
+      }
+
+      .auth-box {
+        justify-content: center;
+      }
+
+      .promptline {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .input {
+        width: 100%;
+        font-size: 16px;
+      }
+
+      /* 16px to prevent iOS zoom */
+      .title {
+        font-size: 18px;
+      }
+
+      .runrow {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .runrow .btn {
+        width: 100%;
+      }
+
+      .locked,
+      .unlocked {
+        text-align: center;
+      }
+
+      .board-grid {
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+      }
+
+      .target-word {
+        font-size: 24px;
+      }
+
+      .mic-btn {
+        width: 56px;
+        height: 56px;
+        font-size: 20px;
+      }
+    }
+  /* Online Indicator */
+  .online-indicator { position: fixed; bottom: 24px; left: 24px; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid var(--border); padding: 8px 16px; border-radius: 24px; display: flex; align-items: center; gap: 10px; color: var(--emerald); font-weight: bold; font-size: 15px; z-index: 998; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: all 0.3s; cursor: pointer; }
+  .online-indicator:hover { transform: translateY(-2px); border-color: var(--emerald); background: rgba(15, 23, 42, 0.9); }
+  .pulse-dot { width: 10px; height: 10px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: pulse-online 2s infinite; }
+  @keyframes pulse-online {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: 'JetBrains Mono', monospace; padding: 28px;
-  }
-  #app { max-width: 860px; margin: 0 auto; }
-  .header { margin-bottom: 20px; }
-  .title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; margin: 0; }
-  .title span { color: var(--emerald); }
-  .sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
-  .tabs { display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
-  .tab { background: transparent; border: none; color: var(--muted); font-family: 'JetBrains Mono', monospace;
-    font-size: 13px; padding: 9px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
-  .tab.active { color: var(--text); border-bottom-color: var(--emerald); }
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; display: none; }
-  .panel.active { display: block; }
-  .promptline { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .caret { color: var(--emerald); font-weight: 700; }
-  .input { flex: 1; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 14px; padding: 9px 12px; outline: none; }
-  .input:focus { border-color: var(--cyan); }
-  .btn { background: var(--emerald); color: #071410; border: none; border-radius: 6px; font-weight: 700;
-    font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 9px 16px; cursor: pointer; white-space: nowrap; }
-  .btn:hover { filter: brightness(1.08); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
-  .status { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-  .status.err { color: var(--red); }
-  .worddef { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
-  .word { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
-  .pos { color: var(--amber); font-size: 12px; margin-left: 8px; }
-  .def { color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-  .buildline { display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px; padding: 10px 12px;
-    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; align-items: center; }
-  .tok { font-size: 17px; padding: 4px 9px; border-radius: 5px; background: rgba(52,211,153,0.12);
-    color: var(--emerald); border: 1px solid rgba(52,211,153,0.35); }
-  .tok.stress { color: var(--amber); background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); }
-  .cursor { width: 2px; height: 20px; background: var(--text); animation: blink 1s step-start infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .bank { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-  .chip { font-size: 17px; padding: 7px 13px; border-radius: 6px; background: var(--surface-alt);
-    border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: transform .1s, border-color .1s; }
-  .chip:hover { border-color: var(--cyan); transform: translateY(-1px); }
-  .chip.used { opacity: 0.25; pointer-events: none; }
-  .chip.error { border-color: var(--red); color: var(--red); animation: shake .3s; }
-  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-  .runrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .locked { color: var(--muted); font-size: 12.5px; }
-  .unlocked { color: var(--emerald); font-size: 12.5px; }
-  .log { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 14px; }
-  .logrow { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
-  .logrow b { color: var(--text); }
-  .board-group { margin-bottom: 22px; }
-  .board-title { font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: var(--cyan); margin-bottom: 10px; }
-  .board-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
-  .board-cell { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 6px; text-align: center; cursor: pointer; }
-  .board-cell:hover { border-color: var(--emerald); }
-  .board-sym { font-size: 18px; display: block; }
-  .board-ex { font-size: 10.5px; color: var(--muted); display: block; margin-top: 3px; }
-  .board-mouth { display: flex; justify-content: center; margin-bottom: 4px; }
-  .mouth-svg { width: 44px; height: 44px; }
-  /* Practice Tab Styles */
-  .practice-box { text-align: center; margin-top: 20px; }
-  .target-word { font-size: 28px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; margin-bottom: 4px; }
-  .target-ipa { font-size: 18px; color: var(--muted); margin-bottom: 24px; }
-  .mic-btn { background: var(--surface-alt); border: 2px solid var(--border); border-radius: 50%;
-    width: 64px; height: 64px; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 24px; cursor: pointer; transition: all 0.2s; color: var(--text); margin-bottom: 24px; }
-  .mic-btn:hover { border-color: var(--cyan); color: var(--cyan); }
-  .mic-btn.recording { border-color: var(--red); color: var(--red); animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(248, 113, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } }
-  .diff-box { background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--border); min-height: 80px; }
-  .diff-word { font-size: 16px; margin-bottom: 8px; color: var(--muted); }
-  .diff-result { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-  .correct { color: var(--emerald); }
-  .wrong { color: var(--red); text-decoration: line-through; opacity: 0.8; }
-  .missing { color: var(--red); border-bottom: 2px dashed var(--red); opacity: 0.8; }
-  
-  /* Grammar Tab Styles */
-  .syntax-subject { color: var(--emerald); font-weight: bold; padding: 2px 4px; background: rgba(52,211,153,0.1); border-radius: 4px;}
-  .syntax-verb { color: var(--red); font-weight: bold; padding: 2px 4px; background: rgba(248,113,113,0.1); border-radius: 4px;}
-  .syntax-object { color: var(--amber); font-weight: bold; padding: 2px 4px; background: rgba(251,191,36,0.1); border-radius: 4px;}
-  .syntax-other { color: var(--text); }
-  .tense-quiz-text { font-size: 16px; margin-bottom: 12px; line-height: 1.8; }
-  .tense-input { width: 140px; text-align: center; font-weight: bold; color: var(--cyan); background: transparent; border: none; border-bottom: 2px solid var(--border); outline: none; font-family: 'JetBrains Mono', monospace; font-size: 16px; }
-  .tense-input:focus { border-bottom-color: var(--cyan); }
-  .log-item { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; font-size: 13.5px; }
-  .log-item-title { color: var(--text); font-weight: bold; }
-  .log-item-count { color: var(--red); background: rgba(248,113,113,0.1); padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-  
-  /* Mobile Responsive */
-  @media (max-width: 600px) {
-    body { padding: 14px; }
-    .tabs { flex-wrap: wrap; }
-    .tab { flex: 1; text-align: center; padding: 9px 8px; font-size: 12px; }
-    .promptline { flex-wrap: wrap; gap: 8px; }
-    .input { width: 100%; font-size: 16px; } /* 16px to prevent iOS zoom */
-    .title { font-size: 18px; }
-    .runrow { flex-direction: column; align-items: stretch; gap: 10px; }
-    .runrow .btn { width: 100%; }
-    .locked, .unlocked { text-align: center; }
-    .board-grid { grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); }
-    .target-word { font-size: 24px; }
-    .mic-btn { width: 56px; height: 56px; font-size: 20px; }
-  }
-</style>
+
+  /* Welcome Screen */
+  .welcome-screen { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  .welcome-title { font-family: 'Space Grotesk', sans-serif; font-size: 32px; color: var(--emerald); margin-bottom: 40px; font-weight: bold; text-align: center; }
+  .profile-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px; }
+  .profile-card { width: 120px; height: 120px; background: rgba(30, 41, 59, 0.6); border: 2px solid var(--border); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; padding: 12px; }
+  .profile-card:hover { transform: scale(1.05); border-color: var(--emerald); background: rgba(52, 211, 153, 0.1); }
+  .profile-icon { font-size: 40px; margin-bottom: 8px; }
+  .profile-name { font-size: 16px; font-weight: bold; color: var(--text); text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-add { border: 2px dashed var(--muted); background: transparent; }
+  .profile-add:hover { border-color: var(--cyan); background: rgba(56, 189, 248, 0.1); }
+  .profile-add .profile-icon { color: var(--muted); }
+  .profile-add:hover .profile-icon { color: var(--cyan); }
+  </style>
 </head>
+
 <body>
-<div id="app">
-  <div class="header">
-    <h1 class="title">English <span>Decoder</span> :: IPA Compiler</h1>
-    <div class="sub">nhập từ → parse phiên âm → giải mã token → run audio (gọi API thật: dictionaryapi.dev)</div>
-  </div>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="parser">word_parser.ts</button>
-    <button class="tab" data-tab="board">ipa_board.ts</button>
-    <button class="tab" data-tab="practice">speech_practice.ts</button>
-    <button class="tab" data-tab="grammar">grammar_debugger.ts</button>
-  </div>
-
-  <div class="panel active" id="panel-parser">
-    <div class="promptline">
-      <span class="caret">&gt;</span>
-      <input class="input" id="wordInput" placeholder="nhập một từ tiếng Anh..." value="buy" autocomplete="off" spellcheck="false" />
-      <button class="btn" id="parseBtn">Parse</button>
-    </div>
-    <div id="statusBox"></div>
-    <div id="resultBox"></div>
-    <div id="logBox"></div>
-  </div>
-
-  <div class="panel" id="panel-practice">
-    <div class="promptline">
-      <span class="caret">&gt;</span>
-      <input class="input" id="pracInput" placeholder="nhập một từ tiếng Anh cần luyện..." autocomplete="off" spellcheck="false" />
-      <button class="btn" id="pracParseBtn">Cập nhật</button>
-    </div>
-    <div class="sub" style="margin-top: -10px; margin-bottom: 20px;">Luyện đọc từ mục tiêu. Trình duyệt cần cấp quyền Microphone (Google Chrome).</div>
-    <div class="practice-box" id="practiceBox">
-      <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 4px;">
-        <div class="target-word" id="pracTargetWord" style="margin-bottom: 0;">...</div>
-        <button class="btn ghost" id="pracPlayBtn" style="padding: 0; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 16px;" title="Nghe mẫu">🔊</button>
-      </div>
-      <div class="target-ipa" id="pracTargetIpa">/.../</div>
-      <button class="mic-btn" id="micBtn" title="Bấm để ghi âm">🎤</button>
-      <div class="diff-box">
-        <div class="diff-word" id="pracSpokenWord">Nhấn mic và đọc to từ trên</div>
-        <div class="diff-result" id="pracDiffResult"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel" id="panel-board">
-    <div class="status">Click vào ký hiệu để nghe ví dụ (dùng giọng đọc trình duyệt).</div>
-    <div id="boardBox"></div>
-  </div>
-
-  <div class="panel" id="panel-grammar">
-    <div class="board-group">
-      <div class="board-title">1. Syntax Highlighter (Bóc tách S-V-O)</div>
-      <div class="promptline">
-        <span class="caret">&gt;</span>
-        <input class="input" id="syntaxInput" placeholder="Nhập một câu tiếng Anh..." value="The quick brown fox jumps over the lazy dog" autocomplete="off" spellcheck="false" />
-        <button class="btn" id="syntaxParseBtn">Analyze</button>
-      </div>
-      <div id="syntaxResult" style="margin-top: 10px; font-size: 16px; line-height: 1.6; min-height: 40px; padding: 12px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
-        <span class="sub">Kết quả bóc tách sẽ hiện ở đây...</span>
-      </div>
-      <div style="margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 12px;">
-        <span><span class="syntax-subject">Subject (Chủ ngữ)</span></span>
-        <span><span class="syntax-verb">Verb (Động từ)</span></span>
-        <span><span class="syntax-object">Object (Tân ngữ)</span></span>
-      </div>
-    </div>
-    
-    <div class="board-group" style="margin-top: 28px;">
-      <div class="board-title">2. Tense Logic Engine (Vá lỗi 5 Thì cơ bản)</div>
-      <div class="promptline">
-        <select class="input" id="tenseSelect" style="max-width: 200px;">
-          <option value="present_simple">Hiện tại đơn (Present Simple)</option>
-          <option value="present_continuous">Hiện tại tiếp diễn (Present Continuous)</option>
-          <option value="past_simple">Quá khứ đơn (Past Simple)</option>
-          <option value="future_simple">Tương lai đơn (Future Simple)</option>
-          <option value="present_perfect">Hiện tại hoàn thành (Present Perfect)</option>
-        </select>
-        <button class="btn" id="generateTenseBtn">Generate Quiz</button>
-      </div>
-      <div id="tenseQuizBox" style="margin-top: 10px; min-height: 80px; padding: 16px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
-        <div class="sub">Chọn thì và bấm Generate Quiz để lấy câu hỏi.</div>
-      </div>
-    </div>
-    
-    <div class="board-group" style="margin-top: 28px; border-top: 1px dashed var(--border); padding-top: 24px;">
-      <div class="board-title" style="color: var(--amber);">3. Error Logging Dashboard</div>
-      <div class="sub" style="margin-bottom: 12px;">Thống kê tần suất mắc lỗi ngữ pháp của bạn (lưu trên LocalStorage). Để triệt tiêu lỗi tận gốc!</div>
-      <div id="errorLogDashboard" style="display: block;">
-      </div>
-      <button class="btn ghost" id="clearLogsBtn" style="margin-top: 12px;">Reset Data</button>
-    </div>
+<!-- Welcome Screen -->
+<div class="welcome-screen" id="welcomeScreen">
+  <div class="welcome-title">Ai đang học hôm nay?</div>
+  <div class="profile-grid" id="profileGrid">
+    <!-- Profiles will be injected here -->
   </div>
 </div>
 
-<script>
-// ---- IPA tokenizer -------------------------------------------------------
-const IPA_SYMBOLS = [
-  "tʃ","dʒ","eɪ","aɪ","ɔɪ","aʊ","əʊ","oʊ","ɪə","eə","ʊə",
-  "iː","ɑː","ɔː","uː","ɜː",
-  "p","b","t","d","k","g","f","v","θ","ð","s","z","ʃ","ʒ",
-  "h","m","n","ŋ","l","r","ɹ","j","w",
-  "ɪ","e","æ","ʌ","ɒ","ʊ","ə","ɚ","ɝ","a","i","u","o",
-].sort((a,b) => b.length - a.length);
-const STRESS = new Set(["ˈ","ˌ","."]);
+<div id="app" style="display: none;">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="header">
+        <h1 class="title">English<br><span>Decoder</span></h1>
+        <div class="sub">IPA Compiler & AI</div>
+      </div>
 
-function tokenizePhonetic(raw) {
-  const clean = raw.replace(/[/\[\]]/g, "").trim();
-  const tokens = [];
-  let i = 0;
-  while (i < clean.length) {
-    const ch = clean[i];
-    if (STRESS.has(ch)) { tokens.push(ch); i++; continue; }
-    if (ch === " ") { i++; continue; }
-    let matched = null;
-    for (const sym of IPA_SYMBOLS) {
-      if (clean.startsWith(sym, i)) { matched = sym; break; }
+      <div class="tabs">
+        <button class="tab active" data-tab="parser"><span class="icon">📖</span> Parser</button>
+        <button class="tab" data-tab="board"><span class="icon">🔤</span> IPA Board</button>
+        <button class="tab" data-tab="practice"><span class="icon">🎤</span> Luyện Âm</button>
+        <button class="tab" data-tab="grammar"><span class="icon">📝</span> Ngữ Pháp</button>
+        <button class="tab" data-tab="quiz"><span class="icon">🧠</span> AI Quiz</button>
+        <button class="tab" data-tab="vocab"><span class="icon">📚</span> Từ Vựng</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="topbar">
+        <div class="auth-box" id="profileBox">
+          <span class="auth-name" id="currentProfileName">👤 Đang tải...</span>
+          <button class="btn ghost" id="changeProfileBtn" style="padding: 6px 12px; font-size: 11px;">Đổi / Tạo
+            User</button>
+        </div>
+      </div>
+
+      <!-- Panels -->
+      <div class="panel active" id="panel-parser">
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="wordInput" placeholder="nhập một từ tiếng Anh..." value="buy" autocomplete="off"
+            spellcheck="false" />
+          <button class="btn" id="parseBtn">Parse</button>
+        </div>
+        <div id="statusBox"></div>
+        <div id="resultBox"></div>
+        <div id="logBox"></div>
+      </div>
+
+      <div class="panel" id="panel-practice">
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="pracInput" placeholder="nhập một từ tiếng Anh cần luyện..." autocomplete="off"
+            spellcheck="false" />
+          <button class="btn" id="pracParseBtn">Cập nhật</button>
+        </div>
+        <div class="sub" style="margin-top: -10px; margin-bottom: 20px;">Luyện đọc từ mục tiêu. Trình duyệt cần cấp
+          quyền Microphone (Google Chrome).</div>
+        <div class="practice-box" id="practiceBox">
+          <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <div class="target-word" id="pracTargetWord" style="margin-bottom: 0;">...</div>
+            <button class="btn ghost" id="pracPlayBtn"
+              style="padding: 0; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 16px;"
+              title="Nghe mẫu">🔊</button>
+          </div>
+          <div class="target-ipa" id="pracTargetIpa">/.../</div>
+          <button class="mic-btn" id="micBtn" title="Bấm để ghi âm">🎤</button>
+          <div class="diff-box">
+            <div class="diff-word" id="pracSpokenWord">Nhấn mic và đọc to từ trên</div>
+            <div class="diff-result" id="pracDiffResult"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-board">
+        <div class="status">Click vào ký hiệu để nghe ví dụ (dùng giọng đọc trình duyệt).</div>
+        <div id="boardBox"></div>
+      </div>
+
+      <div class="panel" id="panel-grammar">
+        <div class="board-group">
+          <div class="board-title">1. Syntax Highlighter (Bóc tách S-V-O)</div>
+          <div class="promptline">
+            <span class="caret">&gt;</span>
+            <input class="input" id="syntaxInput" placeholder="Nhập một câu tiếng Anh..."
+              value="The quick brown fox jumps over the lazy dog" autocomplete="off" spellcheck="false" />
+            <button class="btn" id="syntaxParseBtn">Analyze</button>
+          </div>
+          <div id="syntaxResult"
+            style="margin-top: 10px; font-size: 16px; line-height: 1.6; min-height: 40px; padding: 12px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+            <span class="sub">Kết quả bóc tách sẽ hiện ở đây...</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 12px;">
+            <span><span class="syntax-subject">Subject (Chủ ngữ)</span></span>
+            <span><span class="syntax-verb">Verb (Động từ)</span></span>
+            <span><span class="syntax-object">Object (Tân ngữ)</span></span>
+          </div>
+        </div>
+
+        <div class="board-group" style="margin-top: 28px;">
+          <div class="board-title">2. Tense Logic Engine (Vá lỗi 5 Thì cơ bản)</div>
+          <div class="promptline">
+            <select class="input" id="tenseSelect" style="max-width: 200px;">
+              <option value="present_simple">Hiện tại đơn (Present Simple)</option>
+              <option value="present_continuous">Hiện tại tiếp diễn (Present Continuous)</option>
+              <option value="past_simple">Quá khứ đơn (Past Simple)</option>
+              <option value="future_simple">Tương lai đơn (Future Simple)</option>
+              <option value="present_perfect">Hiện tại hoàn thành (Present Perfect)</option>
+            </select>
+            <button class="btn" id="generateTenseBtn">Generate Quiz</button>
+          </div>
+          <div id="tenseQuizBox"
+            style="margin-top: 10px; min-height: 80px; padding: 16px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+            <div class="sub">Chọn thì và bấm Generate Quiz để lấy câu hỏi.</div>
+          </div>
+        </div>
+
+        <div class="board-group" style="margin-top: 28px; border-top: 1px dashed var(--border); padding-top: 24px;">
+          <div class="board-title" style="color: var(--amber);">3. Error Logging Dashboard</div>
+          <div class="sub" style="margin-bottom: 12px;">Thống kê tần suất mắc lỗi ngữ pháp của bạn (lưu trên
+            LocalStorage). Để triệt tiêu lỗi tận gốc!</div>
+          <div id="errorLogDashboard" style="display: block;">
+          </div>
+          <button class="btn ghost" id="clearLogsBtn" style="margin-top: 12px;">Reset Data</button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-quiz">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div class="board-title" style="margin: 0; color: var(--emerald);" id="quizTitle">Daily AI Challenge</div>
+          <div class="streak-badge" id="streakBadge">🔥 0 days</div>
+        </div>
+
+        <div class="sub" style="margin-bottom: 20px;">Gọi API Gemini mỗi ngày để tạo 1 bộ đề trắc nghiệm ngẫu nhiên. Giữ
+          chuỗi làm đề để tăng streak!</div>
+
+        <div class="promptline" style="gap: 8px;">
+          <select class="input" id="quizLevel" style="flex: 1;">
+            <option value="B1 (Vừa phải)">B1 (Vừa phải)</option>
+            <option value="B2 (Nâng cao)">B2 (Nâng cao)</option>
+            <option value="C1 (Thử thách)">C1 (Thử thách)</option>
+          </select>
+          <select class="input" id="quizAmount" style="flex: 1;">
+            <option value="5">5 câu</option>
+            <option value="15">15 câu</option>
+            <option value="30">30 câu</option>
+          </select>
+          <button class="btn" id="generateDailyBtn" style="flex: 2;">Tạo/Lấy bộ đề hôm nay</button>
+        </div>
+
+        <div id="quizContainer" style="margin-top: 20px;"></div>
+
+        <button class="btn" id="submitQuizBtn" style="width: 100%; margin-top: 16px; display: none;">Nộp bài & Chấm
+          điểm</button>
+        <div id="quizResultLog" style="margin-top: 16px; text-align: center; font-size: 16px; font-weight: bold;"></div>
+      </div>
+
+      <div class="panel" id="panel-vocab">
+        <div class="board-title">My Vocabulary Notebook</div>
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="newVocabWord" placeholder="Từ mới..." style="flex: 1;" autocomplete="off" />
+          <input class="input" id="newVocabMean" placeholder="Nghĩa/Ghi chú..." style="flex: 2;" autocomplete="off" />
+          <button class="btn" id="addVocabBtn">Add</button>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="sub" id="vocabCount" style="font-weight: bold;">0 words saved</span>
+          <button class="btn ghost" id="reviewVocabBtn">Review Mode (Hide Meanings)</button>
+        </div>
+
+        <div class="vocab-list" id="vocabListContainer">
+          <!-- Words will appear here -->
+        </div>
+      </div>
+    </div> <!-- End of main-content -->
+
+    <!-- Floating Vocab System -->
+    <button class="fab-btn" id="fabBtn" title="Thêm từ mới nhanh">➕</button>
+    <div class="vocab-modal" id="vocabModal">
+      <div class="board-title" style="margin-top: 0; margin-bottom: 16px;">Ghi chú nhanh từ mới</div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <input class="input" id="fabVocabWord" placeholder="Từ tiếng Anh..." autocomplete="off" spellcheck="false" />
+        <input class="input" id="fabVocabMean" placeholder="Nghĩa của từ..." autocomplete="off" />
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+          <button class="btn ghost" id="fabCloseBtn" style="padding: 8px 16px;">Đóng</button>
+          <button class="btn" id="fabSaveBtn" style="padding: 8px 16px;">Lưu Từ</button>
+        </div>
+      </div>
+    </div>
+    <div class="tooltip-box" id="vocabTooltip"></div>
+
+  </div>
+
+  <script src="env.js"></script>
+  <script>
+    // ---- Firebase Initialization ---------------------------------------------------
+    // Đọc cấu hình từ env.js (được sinh ra từ GitHub Secrets hoặc .env)
+    const firebaseConfig = {
+      apiKey: window.ENV?.FIREBASE_API_KEY || "",
+      authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || "",
+      projectId: window.ENV?.FIREBASE_PROJECT_ID || "",
+      storageBucket: window.ENV?.FIREBASE_STORAGE_BUCKET || "",
+      messagingSenderId: window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "",
+      appId: window.ENV?.FIREBASE_APP_ID || ""
+    };
+
+    let db = null;
+    const isFirebaseConfigured = !!firebaseConfig.apiKey;
+
+    // Profile System (Session Storage & Welcome Screen)
+    let currentProfile = sessionStorage.getItem("current_profile");
+    let profileList = JSON.parse(localStorage.getItem("profile_list") || '["Khôi"]');
+
+    function selectProfile(name) {
+      sessionStorage.setItem("current_profile", name);
+      location.reload();
     }
-    if (matched) { tokens.push(matched); i += matched.length; }
-    else { tokens.push(ch); i++; }
-  }
-  return tokens;
-}
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function speak(text) {
-  const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
-  const audio = new Audio(url);
-  audio.play().catch(e => console.warn("TTS play failed:", e));
-}
 
-// Speaks a sequence of texts one after another using Youdao TTS
-function speakSequence(texts, { pauseMs = 350 } = {}) {
-  const queue = texts.filter(Boolean);
-  const speakNext = (i) => {
-    if (i >= queue.length) return;
-    const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(queue[i])}&type=2`;
-    const audio = new Audio(url);
-    audio.onended = () => setTimeout(() => speakNext(i + 1), pauseMs);
-    audio.onerror = () => speakNext(i + 1);
-    audio.play().catch(() => speakNext(i + 1));
-  };
-  speakNext(0);
-}
+    function addProfile() {
+      const newName = prompt("Nhập tên người dùng mới (VD: Heo, Vịt):");
+      if (newName && newName.trim() !== "") {
+        const n = newName.trim();
+        if (!profileList.includes(n)) {
+          profileList.push(n);
+          localStorage.setItem("profile_list", JSON.stringify(profileList));
+        }
+        selectProfile(n);
+      }
+    }
 
-// ---- Local Audio Files Integration -------------------------------------------------------
-// Đã tải 44 file âm thanh chuẩn vào thư mục /audio/
+    function initProfile() {
+      const appEl = document.getElementById("app");
+      const welcomeEl = document.getElementById("welcomeScreen");
+      
+      if (!currentProfile) {
+        // Show Welcome Screen
+        appEl.style.display = "none";
+        welcomeEl.style.display = "flex";
+        
+        const grid = document.getElementById("profileGrid");
+        let html = "";
+        profileList.forEach(p => {
+          html += `
+            <div class="profile-card" onclick="selectProfile('${p.replace(/'/g, "\\'")}')">
+              <div class="profile-icon">👤</div>
+              <div class="profile-name">${p}</div>
+            </div>
+          `;
+        });
+        html += `
+          <div class="profile-card profile-add" onclick="addProfile()">
+            <div class="profile-icon">➕</div>
+            <div class="profile-name">Thêm User</div>
+          </div>
+        `;
+        grid.innerHTML = html;
+        return false;
+      }
+      
+      // We have a profile
+      welcomeEl.style.display = "none";
+      appEl.style.display = "flex"; // Grid layout is set by CSS on #app but inline style 'flex' or removing 'display:none' is fine.
+      appEl.style.display = ""; // Remove inline style to let CSS grid take over
+      
+      document.getElementById("currentProfileName").textContent = `👤 ${currentProfile}`;
+      const changeBtn = document.getElementById("changeProfileBtn");
+      if (changeBtn) {
+        changeBtn.addEventListener("click", () => {
+          sessionStorage.removeItem("current_profile");
+          location.reload();
+        });
+      }
+      return true;
+    }
+    
+    const isProfileActive = initProfile();
 
-async function speakIpaThenWord(sym, example) {
-  try {
-    const audioUrl = `audio/${encodeURIComponent(sym)}.mp3`;
-    const audio = new Audio(audioUrl);
-    await new Promise((resolve, reject) => {
-      audio.onended = resolve;
-      audio.onerror = reject;
-      audio.play().catch(reject);
-    });
-    // Nghỉ một chút rồi đọc từ ví dụ bằng giọng trình duyệt
-    setTimeout(() => {
-      speakSequence([example], { rate: 0.85, pauseMs: 0 });
-    }, 200);
-  } catch (e) {
-    // Fallback: nếu lỗi không tải được audio (ví dụ chạy trên môi trường không hỗ trợ)
-    // thì chỉ đọc từ ví dụ.
-    speakSequence([example]);
-  }
-}
+    if (isFirebaseConfigured && isProfileActive) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      loadDataFromFirebase();
+      
+      // Online Presence System
+      const onlineIndicator = document.getElementById("onlineIndicator");
+      const onlineCount = document.getElementById("onlineCount");
+      if (onlineIndicator && onlineCount) {
+        onlineIndicator.style.display = "flex";
+        
+        const onlineRef = db.collection("online_users").doc(currentProfile);
+        function updatePresence() {
+          onlineRef.set({ lastActive: Date.now() }).catch(e => console.log(e));
+        }
+        updatePresence();
+        
+        // Đẩy nhịp tim lên 15 giây/lần để có cảm giác Real-time chân thực
+        const presenceInterval = setInterval(updatePresence, 15000); 
+        
+        // Xóa trạng thái NGAY LẬP TỨC khi người dùng đóng Tab hoặc F5
+        window.addEventListener('beforeunload', () => {
+          clearInterval(presenceInterval);
+          onlineRef.delete();
+        });
+        
+        // Đếm số người online
+        db.collection("online_users").onSnapshot(snap => {
+          let count = 0;
+          const now = Date.now();
+          snap.forEach(doc => {
+            // Thu hẹp cửa sổ trễ xuống 35 giây (để phòng hờ rớt mạng, sập nguồn)
+            if (now - doc.data().lastActive < 35000) count++; 
+          });
+          onlineCount.textContent = count;
+        });
+      }
+    }
 
-// ---- Mouth-shape (khẩu hình) generator -------------------------------------------------------
-// Đơn giản hóa: nhìn thẳng mặt, không phải cắt lớp bên như hình ảnh tham khảo của Google.
-// rounded: 0 (dẹt/spread) -> 1 (tròn/pushed forward)
-// openness: 0 (khép) -> 1 (mở rộng)
-// teeth: có lộ răng trên/dưới không
-// closed: môi mím lại hoàn toàn (p, b, m)
-// lipToTeeth: răng trên chạm môi dưới (f, v)
-// tongueBetween: đầu lưỡi lộ giữa hai hàm răng (θ, ð)
-const MOUTH_PARAMS = {
-  // ── Nguyên âm đơn (Monophthongs) ─────────────────────────────────────────
-  "iː": { rounded: 0,   openness: 0.15, teeth: true  },  // see  – dẹt rộng, hé nhỏ
-  "ɪ":  { rounded: 0,   openness: 0.2,  teeth: true  },  // sit  – dẹt, hé hơn iː
-  "e":  { rounded: 0,   openness: 0.35, teeth: false },  // bed  – dẹt vừa
-  "æ":  { rounded: 0,   openness: 0.75, teeth: false },  // cat  – mở rộng
-  "ɑː": { rounded: 0.1, openness: 0.9,  teeth: false },  // car  – há to nhất
-  "ɒ":  { rounded: 0.5, openness: 0.7,  teeth: false },  // hot  – tròn, mở rộng (British)
-  "ɔː": { rounded: 0.6, openness: 0.55, teeth: false },  // law  – tròn vừa
-  "ʊ":  { rounded: 0.7, openness: 0.25, teeth: false },  // put  – tròn, hé nhỏ
-  "uː": { rounded: 0.9, openness: 0.2,  teeth: false },  // blue – tròn nhất, môi chúm
-  "ʌ":  { rounded: 0.2, openness: 0.45, teeth: false },  // cup  – hơi dẹt, mở vừa
-  "ɜː": { rounded: 0.3, openness: 0.35, teeth: false },  // bird – môi dẹt nhẹ
-  "ə":  { rounded: 0.2, openness: 0.3,  teeth: false },  // about– schwa, trung tính
-  // Âm không nhấn trong American English
-  "ɚ":  { rounded: 0.3, openness: 0.3,  teeth: false },  // butter (unstressed r-colored)
-  "ɝ":  { rounded: 0.3, openness: 0.35, teeth: false },  // bird   (stressed r-colored)
-  // Ký hiệu rút gọn xuất hiện trong một số bộ từ điển
-  "a":  { rounded: 0,   openness: 0.85, teeth: false },  // trap (short open)
-  "i":  { rounded: 0,   openness: 0.15, teeth: true  },  // happy (weak i)
-  "u":  { rounded: 0.8, openness: 0.2,  teeth: false },  // situation (short u)
-  "o":  { rounded: 0.6, openness: 0.4,  teeth: false },  // go (short o)
+    function loadDataFromFirebase() {
+      if (!db) return;
+      const userRef = db.collection("users").doc(currentProfile);
+      userRef.onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.vocab_notebook) {
+            vocabList = data.vocab_notebook;
+            localStorage.setItem(`${currentProfile}_vocab_notebook`, JSON.stringify(vocabList));
+            renderVocab();
+          }
+          if (data.quiz_history) localStorage.setItem(`${currentProfile}_quiz_history`, JSON.stringify(data.quiz_history));
+          if (data.quiz_streak !== undefined) {
+            localStorage.setItem(`${currentProfile}_quiz_streak`, data.quiz_streak.toString());
+            updateStreakBadge();
+          }
+          if (data.grammar_errors) {
+            localStorage.setItem(`${currentProfile}_grammar_errors`, JSON.stringify(data.grammar_errors));
+            renderErrorDashboard();
+          }
+        }
+      });
+    }
 
-  // ── Nguyên âm đôi (Diphthongs) ───────────────────────────────────────────
-  "eɪ": { rounded: 0.1, openness: 0.3,  teeth: false },  // day  – bắt đầu /e/
-  "aɪ": { rounded: 0,   openness: 0.8,  teeth: false },  // my   – bắt đầu /a/ mở rộng
-  "ɔɪ": { rounded: 0.6, openness: 0.5,  teeth: false },  // boy  – bắt đầu /ɔ/
-  "aʊ": { rounded: 0.3, openness: 0.75, teeth: false },  // now  – bắt đầu /a/
-  "əʊ": { rounded: 0.5, openness: 0.3,  teeth: false },  // go   – bắt đầu /ə/
-  "ɪə": { rounded: 0,   openness: 0.25, teeth: true  },  // here – bắt đầu /ɪ/
-  "eə": { rounded: 0,   openness: 0.4,  teeth: false },  // hair – bắt đầu /e/
-  "ʊə": { rounded: 0.6, openness: 0.3,  teeth: false },  // tour – bắt đầu /ʊ/
+    function syncDataToFirebase(key, value) {
+      if (!db) return;
+      const userRef = db.collection("users").doc(currentProfile);
+      const updateObj = {};
+      updateObj[key] = value;
+      userRef.set(updateObj, { merge: true }).catch(console.error);
+    }
 
-  // ── Phụ âm (Consonants) ──────────────────────────────────────────────────
-  // Plosives – môi/lưỡi đóng hoàn toàn khi tích năng lượng
-  "p":  { closed: true },                                  // pen  – hai môi chạm nhau
-  "b":  { closed: true },                                  // bad  – hai môi chạm nhau
-  "t":  { rounded: 0,   openness: 0.25, teeth: true  },  // tea  – lưỡi chạm lợi
-  "d":  { rounded: 0,   openness: 0.25, teeth: true  },  // did  – lưỡi chạm lợi
-  "k":  { rounded: 0,   openness: 0.35, teeth: false },  // cat  – lưỡi chạm vòm mềm
-  "g":  { rounded: 0,   openness: 0.35, teeth: false },  // go   – lưỡi chạm vòm mềm
-  // Labiodentals – răng trên chạm môi dưới
-  "f":  { lipToTeeth: true },                              // fall
-  "v":  { lipToTeeth: true },                              // van
-  // Dentals – đầu lưỡi lộ giữa hai hàm răng
-  "θ":  { rounded: 0,   openness: 0.2,  tongueBetween: true }, // think
-  "ð":  { rounded: 0,   openness: 0.2,  tongueBetween: true }, // this
-  // Sibilants
-  "s":  { rounded: 0,   openness: 0.15, teeth: true  },  // so
-  "z":  { rounded: 0,   openness: 0.15, teeth: true  },  // zoo
-  "ʃ":  { rounded: 0.4, openness: 0.25, teeth: true  },  // she  – môi hơi tròn ra trước
-  "ʒ":  { rounded: 0.4, openness: 0.25, teeth: true  },  // vision
-  // Affricates – bắt đầu đóng như /t,d/ rồi xả ra như /ʃ,ʒ/
-  "tʃ": { rounded: 0.1, openness: 0.15, teeth: true  },  // chair – bắt đầu gần đóng
-  "dʒ": { rounded: 0.1, openness: 0.15, teeth: true  },  // jump  – bắt đầu gần đóng
-  // Nasals – miệng gần khép, âm thoát qua mũi
-  "m":  { closed: true },                                  // man  – hai môi đóng
-  "n":  { rounded: 0,   openness: 0.2,  teeth: true  },  // no   – lưỡi chạm lợi
-  "ŋ":  { rounded: 0,   openness: 0.15, teeth: false },  // sing – lưỡi chạm vòm mềm, miệng gần khép
-  // Approximants
-  "l":  { rounded: 0,   openness: 0.25, teeth: true  },  // leg  – lưỡi chạm lợi, hơi hé
-  "r":  { rounded: 0.4, openness: 0.3,  teeth: false },  // red  – môi hơi tròn (British)
-  "ɹ":  { rounded: 0.35,openness: 0.3,  teeth: false },  // red  – r Mỹ, cuộn lưỡi
-  "j":  { rounded: 0,   openness: 0.15, teeth: true  },  // yes
-  "w":  { rounded: 0.9, openness: 0.15, teeth: false },  // wet  – môi chúm tròn nhất
-  "h":  { rounded: 0,   openness: 0.5,  teeth: false },  // hot  – miệng mở tự nhiên
-};
+    // ---- IPA tokenizer -------------------------------------------------------
+    const IPA_SYMBOLS = [
+      "tʃ", "dʒ", "eɪ", "aɪ", "ɔɪ", "aʊ", "əʊ", "oʊ", "ɪə", "eə", "ʊə",
+      "iː", "ɑː", "ɔː", "uː", "ɜː",
+      "p", "b", "t", "d", "k", "g", "f", "v", "θ", "ð", "s", "z", "ʃ", "ʒ",
+      "h", "m", "n", "ŋ", "l", "r", "ɹ", "j", "w",
+      "ɪ", "e", "æ", "ʌ", "ɒ", "ʊ", "ə", "ɚ", "ɝ", "a", "i", "u", "o",
+    ].sort((a, b) => b.length - a.length);
+    const STRESS = new Set(["ˈ", "ˌ", "."]);
 
-// Vị trí KẾT của âm đôi (diphthong) + affricate — miệng lướt từ MOUTH_PARAMS sang đây.
-const MOUTH_PARAMS_END = {
-  // Diphthongs: glide sang nguyên âm thứ hai
-  "eɪ": { rounded: 0,   openness: 0.15, teeth: true  },  // -> /ɪ/
-  "aɪ": { rounded: 0,   openness: 0.15, teeth: true  },  // -> /ɪ/
-  "ɔɪ": { rounded: 0,   openness: 0.15, teeth: true  },  // -> /ɪ/
-  "aʊ": { rounded: 0.9, openness: 0.2  },                // -> /ʊ/
-  "əʊ": { rounded: 0.9, openness: 0.15 },                // -> /ʊ/
-  "ɪə": { rounded: 0.2, openness: 0.3  },                // -> /ə/
-  "eə": { rounded: 0.2, openness: 0.3  },                // -> /ə/
-  "ʊə": { rounded: 0.2, openness: 0.3  },                // -> /ə/
-  // Affricates: sau pha đóng, xả ra như /ʃ/ hoặc /ʒ/
-  "tʃ": { rounded: 0.4, openness: 0.25, teeth: true  },  // -> /ʃ/ release
-  "dʒ": { rounded: 0.4, openness: 0.25, teeth: true  },  // -> /ʒ/ release
-};
+    function tokenizePhonetic(raw) {
+      const clean = raw.replace(/[/\[\]]/g, "").trim();
+      const tokens = [];
+      let i = 0;
+      while (i < clean.length) {
+        const ch = clean[i];
+        if (STRESS.has(ch)) { tokens.push(ch); i++; continue; }
+        if (ch === " ") { i++; continue; }
+        let matched = null;
+        for (const sym of IPA_SYMBOLS) {
+          if (clean.startsWith(sym, i)) { matched = sym; break; }
+        }
+        if (matched) { tokens.push(matched); i += matched.length; }
+        else { tokens.push(ch); i++; }
+      }
+      return tokens;
+    }
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function speak(text) {
+      const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
+      const audio = new Audio(url);
+      audio.play().catch(e => console.warn("TTS play failed:", e));
+    }
 
-// Trạng thái nghỉ (môi thả lỏng, gần khép) — điểm xuất phát/kết thúc của animation.
-const MOUTH_NEUTRAL = { rounded: 0.1, openness: 0.08, teeth: false };
+    // Speaks a sequence of texts one after another using Youdao TTS
+    function speakSequence(texts, { pauseMs = 350 } = {}) {
+      const queue = texts.filter(Boolean);
+      const speakNext = (i) => {
+        if (i >= queue.length) return;
+        const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(queue[i])}&type=2`;
+        const audio = new Audio(url);
+        audio.onended = () => setTimeout(() => speakNext(i + 1), pauseMs);
+        audio.onerror = () => speakNext(i + 1);
+        audio.play().catch(() => speakNext(i + 1));
+      };
+      speakNext(0);
+    }
 
-// Quy đổi mọi tham số (kể cả closed/lipToTeeth) về một bộ số duy nhất để có thể animate mượt.
-function paramsToGeom(p) {
-  if (p.closed) return { rx: 15, ry: 1.5, teethOp: 0, tongueOp: 0 };
-  if (p.lipToTeeth) return { rx: 14, ry: 5, teethOp: 0.9, tongueOp: 0 };
-  const rounded = p.rounded || 0;
-  const openness = p.openness != null ? p.openness : 0.3;
-  return {
-    rx: 17 - rounded * 6,
-    ry: 4 + openness * 13,
-    teethOp: p.teeth ? 0.85 : 0,
-    tongueOp: p.tongueBetween ? 0.75 : 0,
-  };
-}
+    // ---- Local Audio Files Integration -------------------------------------------------------
+    // Đã tải 44 file âm thanh chuẩn vào thư mục /audio/
 
-function buildMouthSVG(uid) {
-  const stroke = "#8b93a3";
-  const lipStroke = "#38bdf8";
-  const g = paramsToGeom(MOUTH_NEUTRAL);
-  const trans = "transition: rx .25s ease, ry .25s ease, opacity .25s ease;";
-  return `<svg viewBox="0 0 64 64" class="mouth-svg">
+    async function speakIpaThenWord(sym, example) {
+      try {
+        const audioUrl = `audio/${encodeURIComponent(sym)}.mp3`;
+        const audio = new Audio(audioUrl);
+        await new Promise((resolve, reject) => {
+          audio.onended = resolve;
+          audio.onerror = reject;
+          audio.play().catch(reject);
+        });
+        // Nghỉ một chút rồi đọc từ ví dụ bằng giọng trình duyệt
+        setTimeout(() => {
+          speakSequence([example], { rate: 0.85, pauseMs: 0 });
+        }, 200);
+      } catch (e) {
+        // Fallback: nếu lỗi không tải được audio (ví dụ chạy trên môi trường không hỗ trợ)
+        // thì chỉ đọc từ ví dụ.
+        speakSequence([example]);
+      }
+    }
+
+    // ---- Mouth-shape (khẩu hình) generator -------------------------------------------------------
+    // Đơn giản hóa: nhìn thẳng mặt, không phải cắt lớp bên như hình ảnh tham khảo của Google.
+    // rounded: 0 (dẹt/spread) -> 1 (tròn/pushed forward)
+    // openness: 0 (khép) -> 1 (mở rộng)
+    // teeth: có lộ răng trên/dưới không
+    // closed: môi mím lại hoàn toàn (p, b, m)
+    // lipToTeeth: răng trên chạm môi dưới (f, v)
+    // tongueBetween: đầu lưỡi lộ giữa hai hàm răng (θ, ð)
+    const MOUTH_PARAMS = {
+      // ── Nguyên âm đơn (Monophthongs) ─────────────────────────────────────────
+      "iː": { rounded: 0, openness: 0.15, teeth: true },  // see  – dẹt rộng, hé nhỏ
+      "ɪ": { rounded: 0, openness: 0.2, teeth: true },  // sit  – dẹt, hé hơn iː
+      "e": { rounded: 0, openness: 0.35, teeth: false },  // bed  – dẹt vừa
+      "æ": { rounded: 0, openness: 0.75, teeth: false },  // cat  – mở rộng
+      "ɑː": { rounded: 0.1, openness: 0.9, teeth: false },  // car  – há to nhất
+      "ɒ": { rounded: 0.5, openness: 0.7, teeth: false },  // hot  – tròn, mở rộng (British)
+      "ɔː": { rounded: 0.6, openness: 0.55, teeth: false },  // law  – tròn vừa
+      "ʊ": { rounded: 0.7, openness: 0.25, teeth: false },  // put  – tròn, hé nhỏ
+      "uː": { rounded: 0.9, openness: 0.2, teeth: false },  // blue – tròn nhất, môi chúm
+      "ʌ": { rounded: 0.2, openness: 0.45, teeth: false },  // cup  – hơi dẹt, mở vừa
+      "ɜː": { rounded: 0.3, openness: 0.35, teeth: false },  // bird – môi dẹt nhẹ
+      "ə": { rounded: 0.2, openness: 0.3, teeth: false },  // about– schwa, trung tính
+      // Âm không nhấn trong American English
+      "ɚ": { rounded: 0.3, openness: 0.3, teeth: false },  // butter (unstressed r-colored)
+      "ɝ": { rounded: 0.3, openness: 0.35, teeth: false },  // bird   (stressed r-colored)
+      // Ký hiệu rút gọn xuất hiện trong một số bộ từ điển
+      "a": { rounded: 0, openness: 0.85, teeth: false },  // trap (short open)
+      "i": { rounded: 0, openness: 0.15, teeth: true },  // happy (weak i)
+      "u": { rounded: 0.8, openness: 0.2, teeth: false },  // situation (short u)
+      "o": { rounded: 0.6, openness: 0.4, teeth: false },  // go (short o)
+
+      // ── Nguyên âm đôi (Diphthongs) ───────────────────────────────────────────
+      "eɪ": { rounded: 0.1, openness: 0.3, teeth: false },  // day  – bắt đầu /e/
+      "aɪ": { rounded: 0, openness: 0.8, teeth: false },  // my   – bắt đầu /a/ mở rộng
+      "ɔɪ": { rounded: 0.6, openness: 0.5, teeth: false },  // boy  – bắt đầu /ɔ/
+      "aʊ": { rounded: 0.3, openness: 0.75, teeth: false },  // now  – bắt đầu /a/
+      "əʊ": { rounded: 0.5, openness: 0.3, teeth: false },  // go   – bắt đầu /ə/
+      "ɪə": { rounded: 0, openness: 0.25, teeth: true },  // here – bắt đầu /ɪ/
+      "eə": { rounded: 0, openness: 0.4, teeth: false },  // hair – bắt đầu /e/
+      "ʊə": { rounded: 0.6, openness: 0.3, teeth: false },  // tour – bắt đầu /ʊ/
+
+      // ── Phụ âm (Consonants) ──────────────────────────────────────────────────
+      // Plosives – môi/lưỡi đóng hoàn toàn khi tích năng lượng
+      "p": { closed: true },                                  // pen  – hai môi chạm nhau
+      "b": { closed: true },                                  // bad  – hai môi chạm nhau
+      "t": { rounded: 0, openness: 0.25, teeth: true },  // tea  – lưỡi chạm lợi
+      "d": { rounded: 0, openness: 0.25, teeth: true },  // did  – lưỡi chạm lợi
+      "k": { rounded: 0, openness: 0.35, teeth: false },  // cat  – lưỡi chạm vòm mềm
+      "g": { rounded: 0, openness: 0.35, teeth: false },  // go   – lưỡi chạm vòm mềm
+      // Labiodentals – răng trên chạm môi dưới
+      "f": { lipToTeeth: true },                              // fall
+      "v": { lipToTeeth: true },                              // van
+      // Dentals – đầu lưỡi lộ giữa hai hàm răng
+      "θ": { rounded: 0, openness: 0.2, tongueBetween: true }, // think
+      "ð": { rounded: 0, openness: 0.2, tongueBetween: true }, // this
+      // Sibilants
+      "s": { rounded: 0, openness: 0.15, teeth: true },  // so
+      "z": { rounded: 0, openness: 0.15, teeth: true },  // zoo
+      "ʃ": { rounded: 0.4, openness: 0.25, teeth: true },  // she  – môi hơi tròn ra trước
+      "ʒ": { rounded: 0.4, openness: 0.25, teeth: true },  // vision
+      // Affricates – bắt đầu đóng như /t,d/ rồi xả ra như /ʃ,ʒ/
+      "tʃ": { rounded: 0.1, openness: 0.15, teeth: true },  // chair – bắt đầu gần đóng
+      "dʒ": { rounded: 0.1, openness: 0.15, teeth: true },  // jump  – bắt đầu gần đóng
+      // Nasals – miệng gần khép, âm thoát qua mũi
+      "m": { closed: true },                                  // man  – hai môi đóng
+      "n": { rounded: 0, openness: 0.2, teeth: true },  // no   – lưỡi chạm lợi
+      "ŋ": { rounded: 0, openness: 0.15, teeth: false },  // sing – lưỡi chạm vòm mềm, miệng gần khép
+      // Approximants
+      "l": { rounded: 0, openness: 0.25, teeth: true },  // leg  – lưỡi chạm lợi, hơi hé
+      "r": { rounded: 0.4, openness: 0.3, teeth: false },  // red  – môi hơi tròn (British)
+      "ɹ": { rounded: 0.35, openness: 0.3, teeth: false },  // red  – r Mỹ, cuộn lưỡi
+      "j": { rounded: 0, openness: 0.15, teeth: true },  // yes
+      "w": { rounded: 0.9, openness: 0.15, teeth: false },  // wet  – môi chúm tròn nhất
+      "h": { rounded: 0, openness: 0.5, teeth: false },  // hot  – miệng mở tự nhiên
+    };
+
+    // Vị trí KẾT của âm đôi (diphthong) + affricate — miệng lướt từ MOUTH_PARAMS sang đây.
+    const MOUTH_PARAMS_END = {
+      // Diphthongs: glide sang nguyên âm thứ hai
+      "eɪ": { rounded: 0, openness: 0.15, teeth: true },  // -> /ɪ/
+      "aɪ": { rounded: 0, openness: 0.15, teeth: true },  // -> /ɪ/
+      "ɔɪ": { rounded: 0, openness: 0.15, teeth: true },  // -> /ɪ/
+      "aʊ": { rounded: 0.9, openness: 0.2 },                // -> /ʊ/
+      "əʊ": { rounded: 0.9, openness: 0.15 },                // -> /ʊ/
+      "ɪə": { rounded: 0.2, openness: 0.3 },                // -> /ə/
+      "eə": { rounded: 0.2, openness: 0.3 },                // -> /ə/
+      "ʊə": { rounded: 0.2, openness: 0.3 },                // -> /ə/
+      // Affricates: sau pha đóng, xả ra như /ʃ/ hoặc /ʒ/
+      "tʃ": { rounded: 0.4, openness: 0.25, teeth: true },  // -> /ʃ/ release
+      "dʒ": { rounded: 0.4, openness: 0.25, teeth: true },  // -> /ʒ/ release
+    };
+
+    // Trạng thái nghỉ (môi thả lỏng, gần khép) — điểm xuất phát/kết thúc của animation.
+    const MOUTH_NEUTRAL = { rounded: 0.1, openness: 0.08, teeth: false };
+
+    // Quy đổi mọi tham số (kể cả closed/lipToTeeth) về một bộ số duy nhất để có thể animate mượt.
+    function paramsToGeom(p) {
+      if (p.closed) return { rx: 15, ry: 1.5, teethOp: 0, tongueOp: 0 };
+      if (p.lipToTeeth) return { rx: 14, ry: 5, teethOp: 0.9, tongueOp: 0 };
+      const rounded = p.rounded || 0;
+      const openness = p.openness != null ? p.openness : 0.3;
+      return {
+        rx: 17 - rounded * 6,
+        ry: 4 + openness * 13,
+        teethOp: p.teeth ? 0.85 : 0,
+        tongueOp: p.tongueBetween ? 0.75 : 0,
+      };
+    }
+
+    function buildMouthSVG(uid) {
+      const stroke = "#8b93a3";
+      const lipStroke = "#38bdf8";
+      const g = paramsToGeom(MOUTH_NEUTRAL);
+      const trans = "transition: rx .25s ease, ry .25s ease, opacity .25s ease;";
+      return `<svg viewBox="0 0 64 64" class="mouth-svg">
     <circle cx="32" cy="32" r="27" fill="none" stroke="${stroke}" stroke-width="1.5" opacity="0.35"/>
     <ellipse id="mo-${uid}" cx="32" cy="32" rx="${g.rx}" ry="${g.ry}" fill="#0a0e14" stroke="${lipStroke}" stroke-width="2.5" style="${trans}"/>
     <rect id="tt-${uid}" x="${32 - 15 + 2}" y="27" width="26" height="6" rx="1.5" fill="#e7e9ee" opacity="${g.teethOp}" style="${trans}"/>
     <rect id="tb-${uid}" x="${32 - 15 + 2}" y="31" width="26" height="6" rx="1.5" fill="#e7e9ee" opacity="${g.teethOp * 0.6}" style="${trans}"/>
     <ellipse id="tg-${uid}" cx="32" cy="32" rx="7" ry="3" fill="#f87171" opacity="${g.tongueOp}" style="${trans}"/>
   </svg>`;
-}
-
-function setMouthGeom(uid, g) {
-  const mo = document.getElementById(`mo-${uid}`);
-  const tt = document.getElementById(`tt-${uid}`);
-  const tb = document.getElementById(`tb-${uid}`);
-  const tg = document.getElementById(`tg-${uid}`);
-  if (!mo) return;
-  mo.setAttribute("rx", g.rx);
-  mo.setAttribute("ry", g.ry);
-  tt.setAttribute("opacity", g.teethOp);
-  tb.setAttribute("opacity", g.teethOp * 0.6);
-  tg.setAttribute("opacity", g.tongueOp);
-}
-
-// Chuỗi animation: nghỉ -> hình âm -> (lướt sang hình 2 nếu là âm đôi) -> về nghỉ.
-function animateMouth(uid, sym) {
-  const target = paramsToGeom(MOUTH_PARAMS[sym] || {});
-  const endParams = MOUTH_PARAMS_END[sym];
-  const end = endParams ? paramsToGeom(endParams) : null;
-  const neutral = paramsToGeom(MOUTH_NEUTRAL);
-
-  setMouthGeom(uid, neutral);
-  requestAnimationFrame(() => setMouthGeom(uid, target));
-  if (end) {
-    setTimeout(() => setMouthGeom(uid, end), 550);
-    setTimeout(() => setMouthGeom(uid, neutral), 1300);
-  } else {
-    setTimeout(() => setMouthGeom(uid, neutral), 900);
-  }
-}
-const IPA_BOARD = {
-  "Nguyên âm — Vowels": [["iː","see"],["ɪ","sit"],["e","bed"],["æ","cat"],["ɑː","car"],["ɒ","hot"],
-    ["ɔː","law"],["ʊ","put"],["uː","blue"],["ʌ","cup"],["ɜː","bird"],["ə","about"]],
-  "Nguyên âm đôi — Diphthongs": [["eɪ","day"],["aɪ","my"],["ɔɪ","boy"],["aʊ","now"],["əʊ","go"],
-    ["ɪə","here"],["eə","hair"],["ʊə","tour"]],
-  "Phụ âm — Consonants": [["p","pen"],["b","bad"],["t","tea"],["d","did"],["k","cat"],["g","go"],
-    ["f","fall"],["v","van"],["θ","think"],["ð","this"],["s","so"],["z","zoo"],["ʃ","she"],["ʒ","vision"],
-    ["tʃ","chair"],["dʒ","jump"],["m","man"],["n","no"],["ŋ","sing"],["l","leg"],["r","red"],["ɹ","red"],
-    ["j","yes"],["w","wet"],["h","hot"]],
-};
-
-// ---- State -------------------------------------------------------
-let state = {
-  status: "idle", data: null, targetTokens: [], bank: [], built: [], mistakes: 0, decoded: false, log: [],
-};
-let idc = 0;
-
-const statusBox = document.getElementById("statusBox");
-const resultBox = document.getElementById("resultBox");
-const logBox = document.getElementById("logBox");
-const wordInput = document.getElementById("wordInput");
-const parseBtn = document.getElementById("parseBtn");
-
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    tab.classList.add("active");
-    document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
-    if (tab.dataset.tab === "practice") {
-      if (typeof initSpeechPractice === "function") initSpeechPractice();
-    } else if (tab.dataset.tab === "grammar") {
-      renderErrorDashboard();
     }
-  });
-});
 
-async function runParse(word) {
-  const w = word.trim().toLowerCase();
-  if (!w) return;
-  state.status = "loading"; state.data = null; state.decoded = false;
-  state.built = []; state.mistakes = 0;
-  render();
-  try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`);
-    if (!res.ok) throw new Error("NOT_FOUND");
-    const json = await res.json();
-    const entry = json[0];
-    const phoneticObj = entry.phonetics.find(p => p.text && p.audio) || entry.phonetics.find(p => p.text) || null;
-    const phoneticText = (phoneticObj && phoneticObj.text) || entry.phonetic || "";
-    if (!phoneticText) throw new Error("NO_PHONETIC");
-    const audioEntry = entry.phonetics.find(p => p.audio);
-    const audio = audioEntry ? audioEntry.audio : "";
-    const meaning = entry.meanings && entry.meanings[0];
-    const def = (meaning && meaning.definitions && meaning.definitions[0] && meaning.definitions[0].definition) || "";
-    const pos = (meaning && meaning.partOfSpeech) || "";
-
-    const tokens = tokenizePhonetic(phoneticText);
-    const bankTokens = shuffle(tokens).map(sym => ({ id: idc++, sym, used: false, error: false }));
-
-    state.data = { word: w, phoneticText, audio, def, pos };
-    state.targetTokens = tokens;
-    state.bank = bankTokens;
-    state.status = "ready";
-  } catch (e) {
-    state.status = "error";
-    state.errorMsg = e.message === "NO_PHONETIC"
-      ? `Không có dữ liệu phiên âm cho "${w}".`
-      : `Không tìm thấy "${w}" trong từ điển.`;
-  }
-  render();
-}
-
-function handleBankClick(item) {
-  if (item.used || state.decoded) return;
-  const expected = state.targetTokens[state.built.length];
-  if (item.sym === expected) {
-    item.used = true;
-    state.built.push(item.sym);
-    if (state.built.length === state.targetTokens.length) {
-      state.decoded = true;
-      state.log.unshift({ word: state.data.word, phonetic: state.data.phoneticText, mistakes: state.mistakes });
-      state.log = state.log.slice(0, 8);
+    function setMouthGeom(uid, g) {
+      const mo = document.getElementById(`mo-${uid}`);
+      const tt = document.getElementById(`tt-${uid}`);
+      const tb = document.getElementById(`tb-${uid}`);
+      const tg = document.getElementById(`tg-${uid}`);
+      if (!mo) return;
+      mo.setAttribute("rx", g.rx);
+      mo.setAttribute("ry", g.ry);
+      tt.setAttribute("opacity", g.teethOp);
+      tb.setAttribute("opacity", g.teethOp * 0.6);
+      tg.setAttribute("opacity", g.tongueOp);
     }
-  } else {
-    state.mistakes++;
-    item.error = true;
-    render();
-    setTimeout(() => { item.error = false; render(); }, 350);
-    return;
-  }
-  render();
-}
 
-function playAudio() {
-  if (state.data && state.data.audio) {
-    const url = state.data.audio.startsWith("http") ? state.data.audio : `https:${state.data.audio}`;
-    const audio = new Audio(url);
-    audio.play().catch(() => speak(state.data.word));
-  } else if (state.data) {
-    speak(state.data.word);
-  }
-}
+    // Chuỗi animation: nghỉ -> hình âm -> (lướt sang hình 2 nếu là âm đôi) -> về nghỉ.
+    function animateMouth(uid, sym) {
+      const target = paramsToGeom(MOUTH_PARAMS[sym] || {});
+      const endParams = MOUTH_PARAMS_END[sym];
+      const end = endParams ? paramsToGeom(endParams) : null;
+      const neutral = paramsToGeom(MOUTH_NEUTRAL);
 
-function resetPuzzle() {
-  state.bank.forEach(b => { b.used = false; b.error = false; });
-  state.bank = shuffle(state.bank);
-  state.built = [];
-  state.decoded = false;
-  state.mistakes = 0;
-  render();
-}
+      setMouthGeom(uid, neutral);
+      requestAnimationFrame(() => setMouthGeom(uid, target));
+      if (end) {
+        setTimeout(() => setMouthGeom(uid, end), 550);
+        setTimeout(() => setMouthGeom(uid, neutral), 1300);
+      } else {
+        setTimeout(() => setMouthGeom(uid, neutral), 900);
+      }
+    }
+    const IPA_BOARD = {
+      "Nguyên âm — Vowels": [["iː", "see"], ["ɪ", "sit"], ["e", "bed"], ["æ", "cat"], ["ɑː", "car"], ["ɒ", "hot"],
+      ["ɔː", "law"], ["ʊ", "put"], ["uː", "blue"], ["ʌ", "cup"], ["ɜː", "bird"], ["ə", "about"]],
+      "Nguyên âm đôi — Diphthongs": [["eɪ", "day"], ["aɪ", "my"], ["ɔɪ", "boy"], ["aʊ", "now"], ["əʊ", "go"],
+      ["ɪə", "here"], ["eə", "hair"], ["ʊə", "tour"]],
+      "Phụ âm — Consonants": [["p", "pen"], ["b", "bad"], ["t", "tea"], ["d", "did"], ["k", "cat"], ["g", "go"],
+      ["f", "fall"], ["v", "van"], ["θ", "think"], ["ð", "this"], ["s", "so"], ["z", "zoo"], ["ʃ", "she"], ["ʒ", "vision"],
+      ["tʃ", "chair"], ["dʒ", "jump"], ["m", "man"], ["n", "no"], ["ŋ", "sing"], ["l", "leg"], ["r", "red"], ["ɹ", "red"],
+      ["j", "yes"], ["w", "wet"], ["h", "hot"]],
+    };
 
-function render() {
-  // status
-  if (state.status === "error") {
-    statusBox.innerHTML = `<div class="status err">✗ ${state.errorMsg}</div>`;
-  } else if (state.status === "idle") {
-    statusBox.innerHTML = `<div class="status">Sẵn sàng. Gõ một từ rồi nhấn Parse để lấy phiên âm từ dictionaryapi.dev.</div>`;
-  } else if (state.status === "loading") {
-    statusBox.innerHTML = `<div class="status">Đang parse…</div>`;
-  } else {
-    statusBox.innerHTML = "";
-  }
-  parseBtn.disabled = state.status === "loading";
-  parseBtn.textContent = state.status === "loading" ? "parsing…" : "Parse";
+    // ---- State -------------------------------------------------------
+    let state = {
+      status: "idle", data: null, targetTokens: [], bank: [], built: [], mistakes: 0, decoded: false, log: [],
+    };
+    let idc = 0;
 
-  // result
-  if (state.data && state.status === "ready") {
-    const d = state.data;
-    const cleanPhon = d.phoneticText.replace(/[/[\]]/g, "");
-    resultBox.innerHTML = `
+    const statusBox = document.getElementById("statusBox");
+    const resultBox = document.getElementById("resultBox");
+    const logBox = document.getElementById("logBox");
+    const wordInput = document.getElementById("wordInput");
+    const parseBtn = document.getElementById("parseBtn");
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+        if (tab.dataset.tab === "practice") {
+          if (typeof initSpeechPractice === "function") initSpeechPractice();
+        } else if (tab.dataset.tab === "grammar") {
+          renderErrorDashboard();
+        }
+      });
+    });
+
+    async function runParse(word) {
+      const w = word.trim().toLowerCase();
+      if (!w) return;
+      state.status = "loading"; state.data = null; state.decoded = false;
+      state.built = []; state.mistakes = 0;
+      render();
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`);
+        if (!res.ok) throw new Error("NOT_FOUND");
+        const json = await res.json();
+        const entry = json[0];
+        const phoneticObj = entry.phonetics.find(p => p.text && p.audio) || entry.phonetics.find(p => p.text) || null;
+        const phoneticText = (phoneticObj && phoneticObj.text) || entry.phonetic || "";
+        if (!phoneticText) throw new Error("NO_PHONETIC");
+        const audioEntry = entry.phonetics.find(p => p.audio);
+        const audio = audioEntry ? audioEntry.audio : "";
+        const meaning = entry.meanings && entry.meanings[0];
+        const def = (meaning && meaning.definitions && meaning.definitions[0] && meaning.definitions[0].definition) || "";
+        const pos = (meaning && meaning.partOfSpeech) || "";
+
+        const tokens = tokenizePhonetic(phoneticText);
+        const bankTokens = shuffle(tokens).map(sym => ({ id: idc++, sym, used: false, error: false }));
+
+        state.data = { word: w, phoneticText, audio, def, pos };
+        state.targetTokens = tokens;
+        state.bank = bankTokens;
+        state.status = "ready";
+      } catch (e) {
+        state.status = "error";
+        state.errorMsg = e.message === "NO_PHONETIC"
+          ? `Không có dữ liệu phiên âm cho "${w}".`
+          : `Không tìm thấy "${w}" trong từ điển.`;
+      }
+      render();
+    }
+
+    function handleBankClick(item) {
+      if (item.used || state.decoded) return;
+      const expected = state.targetTokens[state.built.length];
+      if (item.sym === expected) {
+        item.used = true;
+        state.built.push(item.sym);
+        if (state.built.length === state.targetTokens.length) {
+          state.decoded = true;
+          state.log.unshift({ word: state.data.word, phonetic: state.data.phoneticText, mistakes: state.mistakes });
+          state.log = state.log.slice(0, 8);
+        }
+      } else {
+        state.mistakes++;
+        item.error = true;
+        render();
+        setTimeout(() => { item.error = false; render(); }, 350);
+        return;
+      }
+      render();
+    }
+
+    function playAudio() {
+      if (state.data && state.data.audio) {
+        const url = state.data.audio.startsWith("http") ? state.data.audio : `https:${state.data.audio}`;
+        const audio = new Audio(url);
+        audio.play().catch(() => speak(state.data.word));
+      } else if (state.data) {
+        speak(state.data.word);
+      }
+    }
+
+    function resetPuzzle() {
+      state.bank.forEach(b => { b.used = false; b.error = false; });
+      state.bank = shuffle(state.bank);
+      state.built = [];
+      state.decoded = false;
+      state.mistakes = 0;
+      render();
+    }
+
+    function render() {
+      // status
+      if (state.status === "error") {
+        statusBox.innerHTML = `<div class="status err">✗ ${state.errorMsg}</div>`;
+      } else if (state.status === "idle") {
+        statusBox.innerHTML = `<div class="status">Sẵn sàng. Gõ một từ rồi nhấn Parse để lấy phiên âm từ dictionaryapi.dev.</div>`;
+      } else if (state.status === "loading") {
+        statusBox.innerHTML = `<div class="status">Đang parse…</div>`;
+      } else {
+        statusBox.innerHTML = "";
+      }
+      parseBtn.disabled = state.status === "loading";
+      parseBtn.textContent = state.status === "loading" ? "parsing…" : "Parse";
+
+      // result
+      if (state.data && state.status === "ready") {
+        const d = state.data;
+        const cleanPhon = d.phoneticText.replace(/[/[\]]/g, "");
+        resultBox.innerHTML = `
       <div class="worddef">
         <span class="word">${d.word}</span>
         ${d.pos ? `<span class="pos">${d.pos}</span>` : ""}
@@ -594,411 +1846,814 @@ function render() {
         <button class="btn ghost" id="resetBtn">reset puzzle</button>
       </div>
     `;
-    const buildline = document.getElementById("buildline");
-    state.built.forEach(t => {
-      const span = document.createElement("span");
-      span.className = "tok" + (STRESS.has(t) ? " stress" : "");
-      span.textContent = t;
-      buildline.appendChild(span);
-    });
-    if (!state.decoded) {
-      const cursor = document.createElement("span");
-      cursor.className = "cursor";
-      buildline.appendChild(cursor);
+        const buildline = document.getElementById("buildline");
+        state.built.forEach(t => {
+          const span = document.createElement("span");
+          span.className = "tok" + (STRESS.has(t) ? " stress" : "");
+          span.textContent = t;
+          buildline.appendChild(span);
+        });
+        if (!state.decoded) {
+          const cursor = document.createElement("span");
+          cursor.className = "cursor";
+          buildline.appendChild(cursor);
 
-      const bankBox = document.getElementById("bankBox");
-      state.bank.forEach(item => {
-        const btn = document.createElement("button");
-        btn.className = "chip" + (item.used ? " used" : "") + (item.error ? " error" : "");
-        btn.textContent = item.sym;
-        btn.addEventListener("click", () => handleBankClick(item));
-        bankBox.appendChild(btn);
-      });
-    }
-    document.getElementById("runBtn").addEventListener("click", playAudio);
-    document.getElementById("resetBtn").addEventListener("click", resetPuzzle);
-  } else {
-    resultBox.innerHTML = "";
-  }
-
-  // log
-  if (state.log.length > 0) {
-    logBox.innerHTML = `<div class="log"><div class="label">decode log (session)</div>${
-      state.log.map(l => `<div class="logrow"><span><b>${l.word}</b> — /${l.phonetic.replace(/[/[\]]/g,"")}/</span><span>lỗi: ${l.mistakes}</span></div>`).join("")
-    }</div>`;
-  } else {
-    logBox.innerHTML = "";
-  }
-}
-
-parseBtn.addEventListener("click", () => runParse(wordInput.value));
-wordInput.addEventListener("keydown", e => { if (e.key === "Enter") runParse(wordInput.value); });
-
-// ---- IPA board render -------------------------------------------------------
-const boardBox = document.getElementById("boardBox");
-Object.entries(IPA_BOARD).forEach(([group, items]) => {
-  const groupDiv = document.createElement("div");
-  groupDiv.className = "board-group";
-  groupDiv.innerHTML = `<div class="board-title">${group}</div>`;
-  const grid = document.createElement("div");
-  grid.className = "board-grid";
-  items.forEach(([sym, example]) => {
-    const cell = document.createElement("div");
-    cell.className = "board-cell";
-    const uid = `${group.length}-${sym}`.replace(/[^a-zA-Z0-9]/g, "_") + "-" + (idc++);
-    const mouthSvg = buildMouthSVG(uid);
-    cell.innerHTML = `<div class="board-mouth">${mouthSvg}</div><span class="board-sym">${sym}</span><span class="board-ex">${example}</span>`;
-    cell.addEventListener("click", () => {
-      animateMouth(uid, sym);
-      speakIpaThenWord(sym, example);
-    });
-    grid.appendChild(cell);
-  });
-  groupDiv.appendChild(grid);
-  boardBox.appendChild(groupDiv);
-});
-
-render();
-
-// ---- Speech Practice Logic -------------------------------------------------------
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-
-const micBtn = document.getElementById("micBtn");
-const pracTargetWord = document.getElementById("pracTargetWord");
-const pracTargetIpa = document.getElementById("pracTargetIpa");
-const pracSpokenWord = document.getElementById("pracSpokenWord");
-const pracDiffResult = document.getElementById("pracDiffResult");
-const pracInput = document.getElementById("pracInput");
-const pracParseBtn = document.getElementById("pracParseBtn");
-const pracPlayBtn = document.getElementById("pracPlayBtn");
-
-function initSpeechPractice() {
-  if (!state.data || !state.data.word) {
-    pracTargetWord.textContent = "Chưa có từ";
-    pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
-    pracPlayBtn.style.display = "none";
-    return;
-  }
-  pracTargetWord.textContent = state.data.word;
-  pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
-  pracPlayBtn.style.display = "flex";
-  pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
-  pracDiffResult.innerHTML = "";
-  micBtn.classList.remove("recording");
-  pracInput.value = state.data.word;
-}
-
-pracParseBtn.addEventListener("click", async () => {
-  const w = pracInput.value.trim();
-  if (w) {
-    pracTargetWord.textContent = "Đang tra từ...";
-    pracTargetIpa.textContent = "/.../";
-    pracDiffResult.innerHTML = "";
-    pracPlayBtn.style.display = "none";
-    await runParse(w);
-    initSpeechPractice();
-  }
-});
-pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
-pracPlayBtn.addEventListener("click", playAudio);
-
-function renderDiff(targetTokens, spokenTokens) {
-  const n = targetTokens.length, m = spokenTokens.length;
-  const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      if (targetTokens[i-1] === spokenTokens[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
-      else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
-    }
-  }
-  let i = n, j = m;
-  const result = [];
-  while (i > 0 && j > 0) {
-    if (targetTokens[i-1] === spokenTokens[j-1]) {
-      result.unshift({ type: "correct", val: targetTokens[i-1] });
-      i--; j--;
-    } else if (dp[i-1][j] >= dp[i][j-1]) {
-      result.unshift({ type: "missing", val: targetTokens[i-1] });
-      i--;
-    } else {
-      result.unshift({ type: "wrong", val: spokenTokens[j-1] });
-      j--;
-    }
-  }
-  while (i > 0) { result.unshift({ type: "missing", val: targetTokens[i-1] }); i--; }
-  while (j > 0) { result.unshift({ type: "wrong", val: spokenTokens[j-1] }); j--; }
-  
-  let html = "/";
-  for (const r of result) {
-    if (r.type === "correct") html += `<span class="correct">${r.val}</span>`;
-    else if (r.type === "wrong") html += `<span class="wrong" title="bạn đã phát âm dư âm này">${r.val}</span>`;
-    else if (r.type === "missing") html += `<span class="missing" title="bạn phát âm sai hoặc thiếu âm này">${r.val}</span>`;
-  }
-  html += "/";
-  pracDiffResult.innerHTML = html;
-}
-
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.lang = 'en-US';
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  
-  recognition.onresult = async (event) => {
-    const spoken = event.results[0][0].transcript.trim().toLowerCase();
-    const cleanSpoken = spoken.replace(/[.,!?]/g, "");
-    pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
-    micBtn.classList.remove("recording");
-    
-    if (cleanSpoken === state.data.word.toLowerCase()) {
-      renderDiff(state.targetTokens, state.targetTokens);
-    } else {
-      pracDiffResult.innerHTML = `<span style="font-size: 13px; color: var(--muted)">Đang phân tích lỗi sai...</span>`;
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanSpoken)}`);
-        if (!res.ok) throw new Error("Not found");
-        const json = await res.json();
-        let spokenPhonetic = "";
-        for (const item of json) {
-          if (item.phonetic) { spokenPhonetic = item.phonetic; break; }
-          if (item.phonetics) {
-            const p = item.phonetics.find(x => x.text);
-            if (p) { spokenPhonetic = p.text; break; }
-          }
+          const bankBox = document.getElementById("bankBox");
+          state.bank.forEach(item => {
+            const btn = document.createElement("button");
+            btn.className = "chip" + (item.used ? " used" : "") + (item.error ? " error" : "");
+            btn.textContent = item.sym;
+            btn.addEventListener("click", () => handleBankClick(item));
+            bankBox.appendChild(btn);
+          });
         }
-        if (!spokenPhonetic) throw new Error("No IPA");
-        const spokenTokens = tokenizePhonetic(spokenPhonetic.replace(/[/[\]]/g, ""));
-        renderDiff(state.targetTokens, spokenTokens);
-      } catch (e) {
-        pracDiffResult.innerHTML = `<span class="wrong" style="font-size: 14px;">Không tìm thấy phiên âm cho từ "${cleanSpoken}"</span>`;
+        document.getElementById("runBtn").addEventListener("click", playAudio);
+        document.getElementById("resetBtn").addEventListener("click", resetPuzzle);
+      } else {
+        resultBox.innerHTML = "";
+      }
+
+      // log
+      if (state.log.length > 0) {
+        logBox.innerHTML = `<div class="log"><div class="label">decode log (session)</div>${state.log.map(l => `<div class="logrow"><span><b>${l.word}</b> — /${l.phonetic.replace(/[/[\]]/g, "")}/</span><span>lỗi: ${l.mistakes}</span></div>`).join("")
+          }</div>`;
+      } else {
+        logBox.innerHTML = "";
       }
     }
-  };
-  
-  recognition.onspeechend = () => {
-    try { recognition.stop(); } catch(e) {}
-    micBtn.classList.remove("recording");
-  };
-  
-  recognition.onend = () => {
-    micBtn.classList.remove("recording");
-  };
-  
-  recognition.onerror = (event) => {
-    micBtn.classList.remove("recording");
-    if (event.error === 'not-allowed') {
-       alert("⚠️ Trình duyệt đang chặn Microphone!\n\nVui lòng bấm vào biểu tượng 🔒 (hoặc nút Tuỳ chỉnh) trên thanh địa chỉ trang web và chọn 'Allow' (Cho phép) Microphone để có thể thu âm.");
-       pracSpokenWord.textContent = "Chưa cấp quyền Microphone.";
-    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-       pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
-    } else if (event.error === 'no-speech') {
-       pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
-    }
-  };
-}
 
-if (micBtn) {
-  micBtn.addEventListener("click", () => {
-    if (!SpeechRecognition) {
-      alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng dùng Google Chrome hoặc Edge.");
-      return;
-    }
-    if (!state.data || !state.data.word) return;
-    
-    // Nếu đang thu âm thì bấm để dừng sớm
-    if (micBtn.classList.contains("recording")) {
-      micBtn.classList.remove("recording");
-      if (pracSpokenWord.textContent.includes("Đang nghe")) {
-        pracSpokenWord.textContent = "Đang xử lý giọng nói...";
+    parseBtn.addEventListener("click", () => runParse(wordInput.value));
+    wordInput.addEventListener("keydown", e => { if (e.key === "Enter") runParse(wordInput.value); });
+
+    // ---- IPA board render -------------------------------------------------------
+    const boardBox = document.getElementById("boardBox");
+    Object.entries(IPA_BOARD).forEach(([group, items]) => {
+      const groupDiv = document.createElement("div");
+      groupDiv.className = "board-group";
+      groupDiv.innerHTML = `<div class="board-title">${group}</div>`;
+      const grid = document.createElement("div");
+      grid.className = "board-grid";
+      items.forEach(([sym, example]) => {
+        const cell = document.createElement("div");
+        cell.className = "board-cell";
+        const uid = `${group.length}-${sym}`.replace(/[^a-zA-Z0-9]/g, "_") + "-" + (idc++);
+        const mouthSvg = buildMouthSVG(uid);
+        cell.innerHTML = `<div class="board-mouth">${mouthSvg}</div><span class="board-sym">${sym}</span><span class="board-ex">${example}</span>`;
+        cell.addEventListener("click", () => {
+          animateMouth(uid, sym);
+          speakIpaThenWord(sym, example);
+        });
+        grid.appendChild(cell);
+      });
+      groupDiv.appendChild(grid);
+      boardBox.appendChild(groupDiv);
+    });
+
+    render();
+
+    // ---- Speech Practice Logic -------------------------------------------------------
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    const micBtn = document.getElementById("micBtn");
+    const pracTargetWord = document.getElementById("pracTargetWord");
+    const pracTargetIpa = document.getElementById("pracTargetIpa");
+    const pracSpokenWord = document.getElementById("pracSpokenWord");
+    const pracDiffResult = document.getElementById("pracDiffResult");
+    const pracInput = document.getElementById("pracInput");
+    const pracParseBtn = document.getElementById("pracParseBtn");
+    const pracPlayBtn = document.getElementById("pracPlayBtn");
+
+    function initSpeechPractice() {
+      if (!state.data || !state.data.word) {
+        pracTargetWord.textContent = "Chưa có từ";
+        pracTargetIpa.textContent = "Hãy nhập một từ vào ô trên";
+        pracPlayBtn.style.display = "none";
+        return;
       }
-      try { if (recognition) recognition.stop(); } catch(e) {}
-      return;
-    }
-    
-    micBtn.classList.add("recording");
-    pracSpokenWord.textContent = "Đang nghe... (Bấm mic lần nữa để kết thúc)";
-    pracDiffResult.innerHTML = "";
-    
-    try { 
-      recognition.start(); 
-    } catch(e) {
-      // Nếu đã start rồi mà gọi lại có thể văng lỗi
-      console.warn("Speech recognition start error:", e);
+      pracTargetWord.textContent = state.data.word;
+      pracTargetIpa.textContent = "/" + state.data.phoneticText.replace(/[/[\]]/g, "") + "/";
+      pracPlayBtn.style.display = "flex";
+      pracSpokenWord.textContent = "Nhấn mic và đọc to từ trên";
+      pracDiffResult.innerHTML = "";
       micBtn.classList.remove("recording");
-      pracSpokenWord.textContent = "Lỗi khi khởi động mic. Hãy thử lại.";
+      pracInput.value = state.data.word;
     }
-  });
-}
-// ---- Grammar Debugger Logic -------------------------------------------------------
 
-const syntaxInput = document.getElementById("syntaxInput");
-const syntaxParseBtn = document.getElementById("syntaxParseBtn");
-const syntaxResult = document.getElementById("syntaxResult");
+    pracParseBtn.addEventListener("click", async () => {
+      const w = pracInput.value.trim();
+      if (w) {
+        pracTargetWord.textContent = "Đang tra từ...";
+        pracTargetIpa.textContent = "/.../";
+        pracDiffResult.innerHTML = "";
+        pracPlayBtn.style.display = "none";
+        await runParse(w);
+        initSpeechPractice();
+      }
+    });
+    pracInput.addEventListener("keydown", e => { if (e.key === "Enter") pracParseBtn.click(); });
+    pracPlayBtn.addEventListener("click", playAudio);
 
-function parseSyntax() {
-  const text = syntaxInput.value.trim();
-  if (!text) return;
-  
-  if (typeof window.nlp === 'undefined') {
-    syntaxResult.innerHTML = '<span style="color: var(--red);">Error: Không tải được thư viện compromise.js. Cần có mạng internet.</span>';
-    return;
-  }
-  
-  const doc = window.nlp(text);
-  const data = doc.json();
-  
-  let parts = [];
-  let isVerbSeen = false;
-  
-  data.forEach(phrase => {
-    if (phrase.terms) {
-      phrase.terms.forEach(term => {
-        let w = (term.pre || "") + term.text + (term.post || "");
-        let tags = term.tags || [];
-        
-        if (tags.includes('Verb')) {
-          parts.push(`<span class="syntax-verb" title="Verb">${w}</span>`);
-          isVerbSeen = true;
-        } else if (tags.includes('Noun') || tags.includes('Pronoun')) {
-          if (!isVerbSeen) {
-            parts.push(`<span class="syntax-subject" title="Subject">${w}</span>`);
-          } else {
-            parts.push(`<span class="syntax-object" title="Object">${w}</span>`);
-          }
+    function renderDiff(targetTokens, spokenTokens) {
+      const n = targetTokens.length, m = spokenTokens.length;
+      const dp = Array(n + 1).fill(null).map(() => Array(m + 1).fill(0));
+      for (let i = 1; i <= n; i++) {
+        for (let j = 1; j <= m; j++) {
+          if (targetTokens[i - 1] === spokenTokens[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+          else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+      let i = n, j = m;
+      const result = [];
+      while (i > 0 && j > 0) {
+        if (targetTokens[i - 1] === spokenTokens[j - 1]) {
+          result.unshift({ type: "correct", val: targetTokens[i - 1] });
+          i--; j--;
+        } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+          result.unshift({ type: "missing", val: targetTokens[i - 1] });
+          i--;
         } else {
-          parts.push(`<span class="syntax-other">${w}</span>`);
+          result.unshift({ type: "wrong", val: spokenTokens[j - 1] });
+          j--;
+        }
+      }
+      while (i > 0) { result.unshift({ type: "missing", val: targetTokens[i - 1] }); i--; }
+      while (j > 0) { result.unshift({ type: "wrong", val: spokenTokens[j - 1] }); j--; }
+
+      let html = "/";
+      for (const r of result) {
+        if (r.type === "correct") html += `<span class="correct">${r.val}</span>`;
+        else if (r.type === "wrong") html += `<span class="wrong" title="bạn đã phát âm dư âm này">${r.val}</span>`;
+        else if (r.type === "missing") html += `<span class="missing" title="bạn phát âm sai hoặc thiếu âm này">${r.val}</span>`;
+      }
+      html += "/";
+      pracDiffResult.innerHTML = html;
+    }
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = async (event) => {
+        const spoken = event.results[0][0].transcript.trim().toLowerCase();
+        const cleanSpoken = spoken.replace(/[.,!?]/g, "");
+        pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
+        micBtn.classList.remove("recording");
+
+        if (cleanSpoken === state.data.word.toLowerCase()) {
+          renderDiff(state.targetTokens, state.targetTokens);
+        } else {
+          pracDiffResult.innerHTML = `<span style="font-size: 13px; color: var(--muted)">Đang phân tích lỗi sai...</span>`;
+          try {
+            const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanSpoken)}`);
+            if (!res.ok) throw new Error("Not found");
+            const json = await res.json();
+            let spokenPhonetic = "";
+            for (const item of json) {
+              if (item.phonetic) { spokenPhonetic = item.phonetic; break; }
+              if (item.phonetics) {
+                const p = item.phonetics.find(x => x.text);
+                if (p) { spokenPhonetic = p.text; break; }
+              }
+            }
+            if (!spokenPhonetic) throw new Error("No IPA");
+            const spokenTokens = tokenizePhonetic(spokenPhonetic.replace(/[/[\]]/g, ""));
+            renderDiff(state.targetTokens, spokenTokens);
+          } catch (e) {
+            pracDiffResult.innerHTML = `<span class="wrong" style="font-size: 14px;">Không tìm thấy phiên âm cho từ "${cleanSpoken}"</span>`;
+          }
+        }
+      };
+
+      recognition.onspeechend = () => {
+        try { recognition.stop(); } catch (e) { }
+        micBtn.classList.remove("recording");
+      };
+
+      recognition.onend = () => {
+        micBtn.classList.remove("recording");
+      };
+
+      recognition.onerror = (event) => {
+        micBtn.classList.remove("recording");
+        if (event.error === 'not-allowed') {
+          alert("⚠️ Trình duyệt đang chặn Microphone!\n\nVui lòng bấm vào biểu tượng 🔒 (hoặc nút Tuỳ chỉnh) trên thanh địa chỉ trang web và chọn 'Allow' (Cho phép) Microphone để có thể thu âm.");
+          pracSpokenWord.textContent = "Chưa cấp quyền Microphone.";
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          pracSpokenWord.textContent = `Lỗi thu âm: ${event.error}`;
+        } else if (event.error === 'no-speech') {
+          pracSpokenWord.textContent = "Không nghe thấy tiếng. Hãy thử lại.";
+        }
+      };
+    }
+
+    if (micBtn) {
+      micBtn.addEventListener("click", () => {
+        if (!SpeechRecognition) {
+          alert("Trình duyệt của bạn không hỗ trợ nhận diện giọng nói (Web Speech API). Vui lòng dùng Google Chrome hoặc Edge.");
+          return;
+        }
+        if (!state.data || !state.data.word) return;
+
+        // Nếu đang thu âm thì bấm để dừng sớm
+        if (micBtn.classList.contains("recording")) {
+          micBtn.classList.remove("recording");
+          if (pracSpokenWord.textContent.includes("Đang nghe")) {
+            pracSpokenWord.textContent = "Đang xử lý giọng nói...";
+          }
+          try { if (recognition) recognition.stop(); } catch (e) { }
+          return;
+        }
+
+        micBtn.classList.add("recording");
+        pracSpokenWord.textContent = "Đang nghe... (Bấm mic lần nữa để kết thúc)";
+        pracDiffResult.innerHTML = "";
+
+        try {
+          recognition.start();
+        } catch (e) {
+          // Nếu đã start rồi mà gọi lại có thể văng lỗi
+          console.warn("Speech recognition start error:", e);
+          micBtn.classList.remove("recording");
+          pracSpokenWord.textContent = "Lỗi khi khởi động mic. Hãy thử lại.";
         }
       });
     }
-  });
-  
-  syntaxResult.innerHTML = parts.join('');
-}
+    // ---- Grammar Debugger Logic -------------------------------------------------------
 
-if (syntaxParseBtn) syntaxParseBtn.addEventListener("click", parseSyntax);
-if (syntaxInput) syntaxInput.addEventListener("keydown", e => { if (e.key === "Enter") parseSyntax(); });
+    const syntaxInput = document.getElementById("syntaxInput");
+    const syntaxParseBtn = document.getElementById("syntaxParseBtn");
+    const syntaxResult = document.getElementById("syntaxResult");
 
-const tenseSelect = document.getElementById("tenseSelect");
-const generateTenseBtn = document.getElementById("generateTenseBtn");
-const tenseQuizBox = document.getElementById("tenseQuizBox");
-const errorLogDashboard = document.getElementById("errorLogDashboard");
-const clearLogsBtn = document.getElementById("clearLogsBtn");
+    function parseSyntax() {
+      const text = syntaxInput.value.trim();
+      if (!text) return;
 
-const TENSE_QUIZZES = {
-  present_simple: [
-    { q: "He ___ (go) to school every day.", a: "goes", errorType: "Quên thêm 'es' cho ngôi thứ 3 số ít" },
-    { q: "They ___ (not / like) pizza.", a: "do not like", alt: "don't like", errorType: "Sai trợ động từ phủ định (do/does)" },
-    { q: "___ she (play) tennis on weekends?", a: "does she play", errorType: "Sai cấu trúc câu hỏi với Does" }
-  ],
-  present_continuous: [
-    { q: "Look! The dog ___ (run) in the yard.", a: "is running", alt: "is running", errorType: "Thiếu to be hoặc quên gấp đôi phụ âm" },
-    { q: "I ___ (study) right now.", a: "am studying", alt: "am studying", errorType: "Chia sai động từ to be (am/is/are)" }
-  ],
-  past_simple: [
-    { q: "Yesterday, I ___ (see) a movie.", a: "saw", errorType: "Không nhớ động từ bất quy tắc" },
-    { q: "She ___ (not / go) to work last week.", a: "did not go", alt: "didn't go", errorType: "Sai trợ động từ quá khứ (did)" }
-  ],
-  future_simple: [
-    { q: "I think it ___ (rain) tomorrow.", a: "will rain", alt: "will rain", errorType: "Sai cấu trúc will + V" },
-    { q: "___ you (help) me with this?", a: "will you help", alt: "will", errorType: "Sai cấu trúc câu hỏi tương lai" }
-  ],
-  present_perfect: [
-    { q: "I ___ (finish) my homework already.", a: "have finished", alt: "have finished", errorType: "Sai cấu trúc have/has + V3" },
-    { q: "She ___ (never / be) to Japan.", a: "has never been", alt: "has never been", errorType: "Chia sai have/has hoặc V3 (be -> been)" }
-  ]
-};
+      if (typeof window.nlp === 'undefined') {
+        syntaxResult.innerHTML = '<span style="color: var(--red);">Error: Không tải được thư viện compromise.js. Cần có mạng internet.</span>';
+        return;
+      }
 
-let currentQuiz = null;
+      const doc = window.nlp(text);
+      const data = doc.json();
 
-function generateQuiz() {
-  const tense = tenseSelect.value;
-  const list = TENSE_QUIZZES[tense];
-  currentQuiz = list[Math.floor(Math.random() * list.length)];
-  
-  const parts = currentQuiz.q.split("___");
-  
-  tenseQuizBox.innerHTML = `
+      let parts = [];
+      let isVerbSeen = false;
+
+      data.forEach(phrase => {
+        if (phrase.terms) {
+          phrase.terms.forEach(term => {
+            let w = (term.pre || "") + term.text + (term.post || "");
+            let tags = term.tags || [];
+
+            if (tags.includes('Verb')) {
+              parts.push(`<span class="syntax-verb" title="Verb">${w}</span>`);
+              isVerbSeen = true;
+            } else if (tags.includes('Noun') || tags.includes('Pronoun')) {
+              if (!isVerbSeen) {
+                parts.push(`<span class="syntax-subject" title="Subject">${w}</span>`);
+              } else {
+                parts.push(`<span class="syntax-object" title="Object">${w}</span>`);
+              }
+            } else {
+              parts.push(`<span class="syntax-other">${w}</span>`);
+            }
+          });
+        }
+      });
+
+      syntaxResult.innerHTML = parts.join('');
+    }
+
+    if (syntaxParseBtn) syntaxParseBtn.addEventListener("click", parseSyntax);
+    if (syntaxInput) syntaxInput.addEventListener("keydown", e => { if (e.key === "Enter") parseSyntax(); });
+
+    const tenseSelect = document.getElementById("tenseSelect");
+    const generateTenseBtn = document.getElementById("generateTenseBtn");
+    const tenseQuizBox = document.getElementById("tenseQuizBox");
+    const errorLogDashboard = document.getElementById("errorLogDashboard");
+    const clearLogsBtn = document.getElementById("clearLogsBtn");
+
+    const TENSE_QUIZZES = {
+      present_simple: [
+        { q: "He ___ (go) to school every day.", a: "goes", errorType: "Quên thêm 'es' cho ngôi thứ 3 số ít" },
+        { q: "They ___ (not / like) pizza.", a: "do not like", alt: "don't like", errorType: "Sai trợ động từ phủ định (do/does)" },
+        { q: "___ she (play) tennis on weekends?", a: "does she play", errorType: "Sai cấu trúc câu hỏi với Does" }
+      ],
+      present_continuous: [
+        { q: "Look! The dog ___ (run) in the yard.", a: "is running", alt: "is running", errorType: "Thiếu to be hoặc quên gấp đôi phụ âm" },
+        { q: "I ___ (study) right now.", a: "am studying", alt: "am studying", errorType: "Chia sai động từ to be (am/is/are)" }
+      ],
+      past_simple: [
+        { q: "Yesterday, I ___ (see) a movie.", a: "saw", errorType: "Không nhớ động từ bất quy tắc" },
+        { q: "She ___ (not / go) to work last week.", a: "did not go", alt: "didn't go", errorType: "Sai trợ động từ quá khứ (did)" }
+      ],
+      future_simple: [
+        { q: "I think it ___ (rain) tomorrow.", a: "will rain", alt: "will rain", errorType: "Sai cấu trúc will + V" },
+        { q: "___ you (help) me with this?", a: "will you help", alt: "will", errorType: "Sai cấu trúc câu hỏi tương lai" }
+      ],
+      present_perfect: [
+        { q: "I ___ (finish) my homework already.", a: "have finished", alt: "have finished", errorType: "Sai cấu trúc have/has + V3" },
+        { q: "She ___ (never / be) to Japan.", a: "has never been", alt: "has never been", errorType: "Chia sai have/has hoặc V3 (be -> been)" }
+      ]
+    };
+
+    let currentQuiz = null;
+
+    function generateQuiz() {
+      const tense = tenseSelect.value;
+      const list = TENSE_QUIZZES[tense];
+      currentQuiz = list[Math.floor(Math.random() * list.length)];
+
+      const parts = currentQuiz.q.split("___");
+
+      tenseQuizBox.innerHTML = `
     <div class="tense-quiz-text">
       ${parts[0]} <input type="text" class="tense-input" id="quizInput" autocomplete="off" spellcheck="false" /> ${parts[1] || ""}
     </div>
     <button class="btn" id="checkQuizBtn" style="margin-top: 8px;">Kiểm tra</button>
     <div id="quizResult" style="margin-top: 12px; font-weight: bold;"></div>
   `;
-  
-  const checkBtn = document.getElementById("checkQuizBtn");
-  const quizInput = document.getElementById("quizInput");
-  
-  quizInput.focus();
-  
-  checkBtn.addEventListener("click", checkAnswer);
-  quizInput.addEventListener("keydown", e => { if (e.key === "Enter") checkAnswer(); });
-}
 
-function checkAnswer() {
-  if (!currentQuiz) return;
-  const quizInput = document.getElementById("quizInput");
-  const quizResult = document.getElementById("quizResult");
-  const userAns = quizInput.value.trim().toLowerCase();
-  const correctAns = currentQuiz.a.toLowerCase();
-  const correctAlt = currentQuiz.alt ? currentQuiz.alt.toLowerCase() : correctAns;
-  
-  if (userAns === correctAns || userAns === correctAlt) {
-    quizResult.innerHTML = `<span style="color: var(--emerald);">✓ Chính xác!</span>`;
-    quizInput.style.borderColor = "var(--emerald)";
-    quizInput.style.color = "var(--emerald)";
-  } else {
-    quizResult.innerHTML = `<span style="color: var(--red);">✗ Sai rồi. Đáp án đúng: <b>${currentQuiz.a}</b></span>`;
-    quizInput.style.borderColor = "var(--red)";
-    quizInput.style.color = "var(--red)";
-    logError(currentQuiz.errorType);
-  }
-}
+      const checkBtn = document.getElementById("checkQuizBtn");
+      const quizInput = document.getElementById("quizInput");
 
-if (generateTenseBtn) generateTenseBtn.addEventListener("click", generateQuiz);
+      quizInput.focus();
 
-function logError(errorType) {
-  let errors = JSON.parse(localStorage.getItem("grammar_errors") || "{}");
-  if (!errors[errorType]) errors[errorType] = 0;
-  errors[errorType]++;
-  localStorage.setItem("grammar_errors", JSON.stringify(errors));
-  
-  if (document.getElementById("panel-grammar").classList.contains("active")) {
-    renderErrorDashboard();
-  }
-}
+      checkBtn.addEventListener("click", checkAnswer);
+      quizInput.addEventListener("keydown", e => { if (e.key === "Enter") checkAnswer(); });
+    }
 
-function renderErrorDashboard() {
-  if (!errorLogDashboard) return;
-  let errors = JSON.parse(localStorage.getItem("grammar_errors") || "{}");
-  let keys = Object.keys(errors).sort((a,b) => errors[b] - errors[a]);
-  
-  if (keys.length === 0) {
-    errorLogDashboard.innerHTML = `<div class="sub" style="font-style: italic; background: var(--surface-alt); padding: 12px; border-radius: 6px; text-align: center;">🎉 Giỏi quá! Chưa có lỗi nào được ghi nhận.</div>`;
-    return;
-  }
-  
-  let html = "";
-  for (let k of keys) {
-    html += `
+    function checkAnswer() {
+      if (!currentQuiz) return;
+      const quizInput = document.getElementById("quizInput");
+      const quizResult = document.getElementById("quizResult");
+      const userAns = quizInput.value.trim().toLowerCase();
+      const correctAns = currentQuiz.a.toLowerCase();
+      const correctAlt = currentQuiz.alt ? currentQuiz.alt.toLowerCase() : correctAns;
+
+      if (userAns === correctAns || userAns === correctAlt) {
+        quizResult.innerHTML = `<span style="color: var(--emerald);">✓ Chính xác!</span>`;
+        quizInput.style.borderColor = "var(--emerald)";
+        quizInput.style.color = "var(--emerald)";
+      } else {
+        quizResult.innerHTML = `<span style="color: var(--red);">✗ Sai rồi. Đáp án đúng: <b>${currentQuiz.a}</b></span>`;
+        quizInput.style.borderColor = "var(--red)";
+        quizInput.style.color = "var(--red)";
+        logError(currentQuiz.errorType);
+      }
+    }
+
+    if (generateTenseBtn) generateTenseBtn.addEventListener("click", generateQuiz);
+
+    function logError(errorType) {
+      if (!errorType) return;
+      let errors = JSON.parse(localStorage.getItem(`${currentProfile}_grammar_errors`) || "{}");
+      if (!errors[errorType]) errors[errorType] = 0;
+      errors[errorType]++;
+      localStorage.setItem(`${currentProfile}_grammar_errors`, JSON.stringify(errors));
+      if (isFirebaseConfigured) syncDataToFirebase("grammar_errors", errors);
+
+      if (document.getElementById("panel-grammar").classList.contains("active")) {
+        renderErrorDashboard();
+      }
+    }
+
+    function renderErrorDashboard() {
+      if (!errorLogDashboard) return;
+      let errors = JSON.parse(localStorage.getItem(`${currentProfile}_grammar_errors`) || "{}");
+      let keys = Object.keys(errors).sort((a, b) => errors[b] - errors[a]);
+
+      if (keys.length === 0) {
+        errorLogDashboard.innerHTML = `<div class="sub" style="font-style: italic; background: var(--surface-alt); padding: 12px; border-radius: 6px; text-align: center;">🎉 Giỏi quá! Chưa có lỗi nào được ghi nhận.</div>`;
+        return;
+      }
+
+      let html = "";
+      for (let k of keys) {
+        html += `
       <div class="log-item">
         <span class="log-item-title">${k}</span>
         <span class="log-item-count">${errors[k]} lỗi</span>
       </div>
     `;
-  }
-  errorLogDashboard.innerHTML = html;
-}
+      }
+      errorLogDashboard.innerHTML = html;
+    }
 
-if (clearLogsBtn) {
-  clearLogsBtn.addEventListener("click", () => {
-    localStorage.removeItem("grammar_errors");
+    if (clearLogsBtn) {
+      clearLogsBtn.addEventListener("click", () => {
+        localStorage.removeItem(`${currentProfile}_grammar_errors`);
+        if (isFirebaseConfigured) syncDataToFirebase("grammar_errors", {});
+        renderErrorDashboard();
+      });
+    }
+
+    // Init on load just in case
     renderErrorDashboard();
-  });
-}
 
-// Init on load just in case
-renderErrorDashboard();
-</script>
+    // ---- Vocabulary Notebook Logic ---------------------------------------------------
+    const newVocabWord = document.getElementById("newVocabWord");
+    const newVocabMean = document.getElementById("newVocabMean");
+    const addVocabBtn = document.getElementById("addVocabBtn");
+    const vocabListContainer = document.getElementById("vocabListContainer");
+    const vocabCount = document.getElementById("vocabCount");
+    const reviewVocabBtn = document.getElementById("reviewVocabBtn");
+
+    let vocabList = JSON.parse(localStorage.getItem(`${currentProfile}_vocab_notebook`) || "[]");
+    let isReviewMode = false;
+
+    function renderVocab() {
+      if (vocabList.length === 0) {
+        vocabListContainer.innerHTML = `<div class="sub" style="text-align:center; padding: 20px;">Bạn chưa lưu từ nào.</div>`;
+        vocabCount.textContent = "0 words saved";
+        return;
+      }
+      vocabCount.textContent = `${vocabList.length} words saved`;
+      vocabListContainer.innerHTML = vocabList.map((v, i) => `
+    <div class="vocab-item">
+      <div>
+        <div class="vocab-word">${v.word}</div>
+        <div class="vocab-mean ${isReviewMode ? 'hidden' : ''}" onclick="this.classList.remove('hidden')">${v.mean}</div>
+      </div>
+      <div class="vocab-actions">
+        <button class="btn-icon" onclick="speak('${v.word.replace(/'/g, "\\'")}')" title="Đọc từ này">🔊</button>
+        <button class="btn-icon" onclick="deleteVocab(${i})" style="color: var(--red); border-color: rgba(248,113,113,0.3);" title="Xóa">🗑</button>
+      </div>
+    </div>
+  `).join("");
+    }
+
+    function deleteVocab(index) {
+      vocabList.splice(index, 1);
+      localStorage.setItem(`${currentProfile}_vocab_notebook`, JSON.stringify(vocabList));
+      if (isFirebaseConfigured) syncDataToFirebase("vocab_notebook", vocabList);
+      renderVocab();
+    }
+
+    if (addVocabBtn) {
+      addVocabBtn.addEventListener("click", () => {
+        const w = newVocabWord.value.trim();
+        const m = newVocabMean.value.trim();
+        if (!w) return;
+        vocabList.unshift({ word: w, mean: m });
+        localStorage.setItem(`${currentProfile}_vocab_notebook`, JSON.stringify(vocabList));
+        if (isFirebaseConfigured) syncDataToFirebase("vocab_notebook", vocabList);
+        newVocabWord.value = "";
+        newVocabMean.value = "";
+        newVocabWord.focus();
+        renderVocab();
+      });
+      newVocabMean.addEventListener("keydown", e => { if (e.key === "Enter") addVocabBtn.click(); });
+    }
+
+    if (reviewVocabBtn) {
+      reviewVocabBtn.addEventListener("click", () => {
+        isReviewMode = !isReviewMode;
+        reviewVocabBtn.textContent = isReviewMode ? "Review Mode: ON (Click meaning to show)" : "Review Mode (Hide Meanings)";
+        reviewVocabBtn.classList.toggle("ghost", !isReviewMode);
+        if (isReviewMode) { reviewVocabBtn.style.background = "rgba(251,191,36,0.15)"; reviewVocabBtn.style.color = "var(--amber)"; reviewVocabBtn.style.borderColor = "var(--amber)"; }
+        else { reviewVocabBtn.style.background = ""; reviewVocabBtn.style.color = ""; reviewVocabBtn.style.borderColor = ""; }
+        renderVocab();
+      });
+    }
+
+    // ---- Gemini Daily Quiz Logic ---------------------------------------------------
+    const geminiKeyInput = document.getElementById("geminiKey");
+    const saveKeyBtn = document.getElementById("saveKeyBtn");
+    const generateDailyBtn = document.getElementById("generateDailyBtn");
+    const quizContainer = document.getElementById("quizContainer");
+    const submitQuizBtn = document.getElementById("submitQuizBtn");
+    const quizResultLog = document.getElementById("quizResultLog");
+    const streakBadge = document.getElementById("streakBadge");
+
+    let todayQuizData = null; // { date: "YYYY-MM-DD", questions: [...] }
+    let userAnswers = {};
+
+    function initGeminiQuiz() {
+      updateStreakBadge();
+      loadTodayQuiz();
+    }
+
+    function updateStreakBadge() {
+      let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
+      streakBadge.innerHTML = `🔥 ${streak} days`;
+    }
+
+    function getTodayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+
+    function loadTodayQuiz() {
+      const saved = localStorage.getItem(`${currentProfile}_gemini_daily_quiz`);
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.date === getTodayStr()) {
+            todayQuizData = data.questions;
+            renderQuiz();
+            return;
+          }
+        } catch (e) { }
+      }
+    }
+
+    if (generateDailyBtn) {
+      generateDailyBtn.addEventListener("click", async () => {
+        const key = window.ENV?.GEMINI_API_KEY;
+        if (!key) { alert("Không tìm thấy Gemini API Key trong hệ thống (.env)!"); return; }
+
+        // Check if we already have today's quiz generated
+        loadTodayQuiz();
+        if (todayQuizData) {
+          alert("Đã có bộ đề hôm nay!");
+          return;
+        }
+
+        // Update button text to reflect review if needed
+        let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
+        let isReviewDay = streak > 0 && (streak + 1) % 7 === 0;
+
+        generateDailyBtn.textContent = isReviewDay ? "Đang tạo Bài Ôn Tập 7 Ngày..." : "Đang kết nối Gemini (khoảng 5-10s)...";
+        generateDailyBtn.disabled = true;
+        quizContainer.innerHTML = "";
+        submitQuizBtn.style.display = "none";
+        quizResultLog.innerHTML = "";
+        userAnswers = {};
+
+        try {
+          const levelEl = document.getElementById("quizLevel");
+          const amountEl = document.getElementById("quizAmount");
+          const level = levelEl ? levelEl.value : "B2 (Nâng cao)";
+          const amount = amountEl ? amountEl.value : "15";
+
+          // 7-Day Review Logic
+          let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
+          let isReviewDay = streak > 0 && (streak + 1) % 7 === 0;
+
+          let promptText = "";
+          if (isReviewDay) {
+            let recentVocab = vocabList.slice(0, 30).map(v => v.word).join(", ");
+            let errors = JSON.parse(localStorage.getItem(`${currentProfile}_grammar_errors`) || "{}");
+            let topErrors = Object.keys(errors).sort((a, b) => errors[b] - errors[a]).slice(0, 5).join(", ");
+
+            promptText = `Đây là bài kiểm tra ÔN TẬP định kỳ 7 ngày. Tạo một bài kiểm tra trắc nghiệm tiếng Anh gồm ${amount} câu hỏi ở trình độ ${level}.
+        ĐẶC BIỆT YÊU CẦU: Bạn PHẢI sử dụng các từ vựng sau đây làm trọng tâm (trong câu hỏi hoặc đáp án): [${recentVocab}].
+        ĐỒNG THỜI, hãy thiết kế các câu hỏi xoáy sâu vào các lỗi ngữ pháp sau mà người dùng hay sai: [${topErrors}].
+        Nếu danh sách từ vựng hoặc ngữ pháp trống, hãy tạo một bài kiểm tra ngẫu nhiên thật khó để thử thách.`;
+          } else {
+            promptText = `Tạo một bài kiểm tra trắc nghiệm tiếng Anh gồm ${amount} câu hỏi ở trình độ ${level} (bao gồm từ vựng, ngữ pháp, idiom khó).`;
+          }
+
+          promptText += `
+      Trả về dưới dạng mảng JSON thuần túy (không có markdown \`\`\`json).
+      Mỗi câu hỏi có cấu trúc:
+      {
+        "q": "Câu hỏi",
+        "opts": ["A", "B", "C", "D"],
+        "ans": "Đáp án đúng (chuỗi nguyên bản từ opts)",
+        "exp": "Giải thích chi tiết tại sao lại chọn đáp án này bằng tiếng Việt"
+      }`;
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: { response_mime_type: "application/json" }
+            })
+          });
+
+          if (!res.ok) throw new Error("Lỗi API Gemini: " + res.status);
+          const json = await res.json();
+          const rawText = json.candidates[0].content.parts[0].text;
+
+          // Attempt to parse JSON
+          const questions = JSON.parse(rawText);
+          todayQuizData = questions;
+
+          localStorage.setItem(`${currentProfile}_gemini_daily_quiz`, JSON.stringify({
+            date: getTodayStr(),
+            isReview: isReviewDay,
+            questions: todayQuizData
+          }));
+
+          renderQuiz();
+        } catch (e) {
+          console.error(e);
+          alert("Không thể tạo quiz: " + e.message);
+        } finally {
+          generateDailyBtn.textContent = "Tạo/Lấy bộ đề hôm nay";
+          generateDailyBtn.disabled = false;
+        }
+      });
+    }
+
+    function renderQuiz() {
+      if (!todayQuizData) return;
+
+      const saved = localStorage.getItem(`${currentProfile}_gemini_daily_quiz`);
+      let isReview = false;
+      if (saved) {
+        try { isReview = JSON.parse(saved).isReview; } catch (e) { }
+      }
+      const titleEl = document.getElementById("quizTitle");
+      if (titleEl) {
+        titleEl.innerHTML = isReview ? "🎯 7-Day Review Challenge" : "Daily AI Challenge";
+      }
+
+      let html = "";
+      todayQuizData.forEach((q, i) => {
+        html += `
+      <div class="quiz-card" id="qcard-${i}">
+        <div class="quiz-q">${i + 1}. ${highlightVocab(q.q)}</div>
+        ${q.opts.map((opt, j) => `
+          <div class="quiz-opt" id="opt-${i}-${j}" onclick="selectAnswer(${i}, ${j}, '${opt.replace(/'/g, "\\'")}')">
+            ${String.fromCharCode(65 + j)}. ${highlightVocab(opt)}
+          </div>
+        `).join("")}
+        <div class="quiz-exp" id="exp-${i}"><b>Giải thích:</b> ${highlightVocab(q.exp)}</div>
+      </div>
+    `;
+      });
+      quizContainer.innerHTML = html;
+      submitQuizBtn.style.display = "block";
+      quizResultLog.innerHTML = "";
+
+      // Kiểm tra xem hôm nay đã nộp bài chưa
+      const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
+      if (history[getTodayStr()]) {
+        userAnswers = history[getTodayStr()].answers;
+        gradeQuiz(true); // show results without modifying streak again
+      }
+    }
+
+    function selectAnswer(qIndex, optIndex, optValue) {
+      // If already submitted today, can't change
+      const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
+      if (history[getTodayStr()]) return;
+
+      userAnswers[qIndex] = optValue;
+      // Clear previous selected UI
+      for (let j = 0; j < todayQuizData[qIndex].opts.length; j++) {
+        const el = document.getElementById(`opt-${qIndex}-${j}`);
+        if (el) el.classList.remove("selected");
+      }
+      // Add selected UI
+      const selectedEl = document.getElementById(`opt-${qIndex}-${optIndex}`);
+      if (selectedEl) selectedEl.classList.add("selected");
+    }
+
+    if (submitQuizBtn) {
+      submitQuizBtn.addEventListener("click", () => {
+        if (Object.keys(userAnswers).length < todayQuizData.length) {
+          alert("Vui lòng trả lời hết tất cả các câu!");
+          return;
+        }
+
+        // Save to history
+        const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
+        history[getTodayStr()] = { answers: userAnswers };
+        localStorage.setItem(`${currentProfile}_quiz_history`, JSON.stringify(history));
+        if (isFirebaseConfigured) syncDataToFirebase("quiz_history", history);
+
+        // Update streak (only increment if yesterday was done, or if it's 0)
+        let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const yesterdayStr = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+        if (streak === 0 || history[yesterdayStr]) {
+          streak++;
+        } else if (!history[yesterdayStr]) {
+          streak = 1; // broken streak
+        }
+        localStorage.setItem(`${currentProfile}_quiz_streak`, streak.toString());
+        if (isFirebaseConfigured) syncDataToFirebase("quiz_streak", streak);
+        updateStreakBadge();
+
+        gradeQuiz(false);
+      });
+    }
+
+    function gradeQuiz(isHistoryLoad) {
+      let score = 0;
+      submitQuizBtn.style.display = "none";
+
+      todayQuizData.forEach((q, i) => {
+        const uAns = userAnswers[i];
+        const isCorrect = (uAns === q.ans);
+        if (isCorrect) score++;
+
+        // Show UI
+        for (let j = 0; j < q.opts.length; j++) {
+          const el = document.getElementById(`opt-${i}-${j}`);
+          if (!el) continue;
+
+          // Remove hover/cursor effects
+          el.style.cursor = "default";
+          el.style.pointerEvents = "none";
+
+          if (q.opts[j] === q.ans) {
+            el.classList.add("correct"); // Highlight correct answer
+          } else if (q.opts[j] === uAns && !isCorrect) {
+            el.classList.add("wrong"); // Highlight wrong choice
+          }
+        }
+
+        // Show explanation
+        const expEl = document.getElementById(`exp-${i}`);
+        if (expEl) expEl.style.display = "block";
+      });
+
+      quizResultLog.innerHTML = `<span style="color: var(--emerald);">Bạn đã đạt ${score}/${todayQuizData.length} điểm!</span>`;
+    }
+
+    // Gọi render ban đầu
+    if (isProfileActive) {
+      initGeminiQuiz();
+      renderVocab();
+    }
+
+    // ---- Floating Vocab System -----------------------------------------------
+    const fabBtn = document.getElementById("fabBtn");
+    const vocabModal = document.getElementById("vocabModal");
+    const fabVocabWord = document.getElementById("fabVocabWord");
+    const fabVocabMean = document.getElementById("fabVocabMean");
+    const fabCloseBtn = document.getElementById("fabCloseBtn");
+    const fabSaveBtn = document.getElementById("fabSaveBtn");
+    const vocabTooltip = document.getElementById("vocabTooltip");
+
+    if (fabBtn) {
+      fabBtn.addEventListener("click", () => {
+        vocabModal.classList.add("show");
+        fabVocabWord.focus();
+      });
+    }
+
+    if (fabCloseBtn) {
+      fabCloseBtn.addEventListener("click", () => {
+        vocabModal.classList.remove("show");
+      });
+    }
+
+    if (fabSaveBtn) {
+      fabSaveBtn.addEventListener("click", () => {
+        const w = fabVocabWord.value.trim();
+        const m = fabVocabMean.value.trim();
+        if (!w) return;
+        vocabList.unshift({ word: w, mean: m });
+        localStorage.setItem(`${currentProfile}_vocab_notebook`, JSON.stringify(vocabList));
+        if (isFirebaseConfigured) syncDataToFirebase("vocab_notebook", vocabList);
+        renderVocab();
+        vocabModal.classList.remove("show");
+        fabVocabWord.value = "";
+        fabVocabMean.value = "";
+        
+        // Re-render quiz to apply highlight
+        if (todayQuizData && document.getElementById("panel-quiz").classList.contains("active")) {
+          renderQuiz();
+        }
+      });
+    }
+
+    // Tooltip logic
+    window.showVocabTooltip = function(event, mean) {
+      event.stopPropagation();
+      vocabTooltip.innerHTML = mean;
+      vocabTooltip.classList.add("show");
+      
+      const rect = event.target.getBoundingClientRect();
+      vocabTooltip.style.left = rect.left + (rect.width / 2) + "px";
+      vocabTooltip.style.top = rect.top + "px";
+    };
+
+    document.addEventListener("click", () => {
+      if (vocabTooltip && vocabTooltip.classList.contains("show")) {
+        vocabTooltip.classList.remove("show");
+      }
+    });
+
+    // Highlight Algorithm
+    function highlightVocab(text) {
+      if (!text) return text;
+      if (!vocabList || vocabList.length === 0) return text;
+      let sortedVocab = [...vocabList].sort((a,b) => b.word.length - a.word.length);
+      let processed = text;
+      sortedVocab.forEach(v => {
+        // Regex matches the exact word, case-insensitive, ignoring if it's already inside an HTML tag
+        // This simple replace is usually fine for raw Gemini quiz text
+        const safeMean = v.mean.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const regex = new RegExp(`\\b(${v.word})\\b`, 'gi');
+        processed = processed.replace(regex, `<span class="vocab-hl" onclick="showVocabTooltip(event, '${safeMean}')">$1</span>`);
+      });
+      return processed;
+    }
+
+  </script>
 </body>
+
 </html>
