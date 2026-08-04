@@ -2498,8 +2498,8 @@
         "exp": "Giải thích chi tiết tại sao lại chọn đáp án này bằng tiếng Việt"
       }`;
 
-          // Try models in order: 1.5-pro -> 1.5-flash -> gemini-pro
-          const models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"];
+          // Try models in order (newest first for best quality)
+          const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"];
           let res = null;
           let lastErr = null;
           for (const model of models) {
