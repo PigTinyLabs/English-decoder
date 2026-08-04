@@ -1124,6 +1124,7 @@
 
 <!-- Welcome Screen -->
 <div class="welcome-screen" id="welcomeScreen">
+
   <div class="welcome-title">Ai đang học hôm nay?</div>
   <div class="profile-grid" id="profileGrid">
     <!-- Profiles will be injected here -->
@@ -1270,6 +1271,7 @@
             <option value="30">30 câu</option>
           </select>
           <button class="btn" id="generateDailyBtn" style="flex: 2;">Tạo/Lấy bộ đề hôm nay</button>
+          <button class="btn ghost" id="showHistoryBtn" style="flex: 0 0 auto; padding: 0 16px;" title="Xem lại đề cũ">📜</button>
         </div>
 
         <div id="quizContainer" style="margin-top: 20px;"></div>
@@ -1314,7 +1316,20 @@
     </div>
     <div class="tooltip-box" id="vocabTooltip"></div>
 
+  <!-- History Modal -->
+  <div class="welcome-screen" id="historyModal" style="background: rgba(15, 23, 42, 0.9); z-index: 10001; display: none;">
+    <div class="welcome-title">Lịch sử làm bài</div>
+    <div class="profile-grid" id="historyGrid" style="margin-bottom: 24px;"></div>
+    <button class="btn ghost" id="closeHistoryBtn">Đóng</button>
   </div>
+
+  <!-- Online Indicator -->
+  <div class="online-indicator" id="onlineIndicator" title="Số người đang học lúc này" style="display: none;">
+    <div class="pulse-dot"></div>
+    👁 <span id="onlineCount">1</span>
+  </div>
+
+</div>
 
   <script src="env.js"></script>
   <script>
@@ -2558,9 +2573,13 @@
 
         // Save to history
         const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
-        history[getTodayStr()] = { answers: userAnswers };
+        history[getTodayStr()] = { 
+          answers: userAnswers,
+          questions: todayQuizData, // Save questions so we can review them later
+          isReview: JSON.parse(localStorage.getItem(`${currentProfile}_gemini_daily_quiz`) || '{}').isReview || false
+        };
         localStorage.setItem(`${currentProfile}_quiz_history`, JSON.stringify(history));
-        if (isFirebaseConfigured) syncDataToFirebase("quiz_history", history);
+        if (db) syncDataToFirebase("quiz_history", history);
 
         // Update streak (only increment if yesterday was done, or if it's 0)
         let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
@@ -2613,6 +2632,109 @@
 
       quizResultLog.innerHTML = `<span style="color: var(--emerald);">Bạn đã đạt ${score}/${todayQuizData.length} điểm!</span>`;
     }
+
+    // ---- History System ---------------------------------------------------
+    const showHistoryBtn = document.getElementById("showHistoryBtn");
+    const historyModal = document.getElementById("historyModal");
+    const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+    const historyGrid = document.getElementById("historyGrid");
+
+    if (showHistoryBtn) {
+      showHistoryBtn.addEventListener("click", () => {
+        historyModal.style.display = "flex";
+        const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
+        const dates = Object.keys(history).sort((a,b) => new Date(b) - new Date(a));
+        
+        let html = "";
+        if (dates.length === 0) {
+          html = `<div style="color: var(--slate-400); font-family: monospace;">Chưa có lịch sử làm bài.</div>`;
+        } else {
+          dates.forEach(d => {
+            const h = history[d];
+            const title = h.isReview ? "🎯 Review" : "AI Quiz";
+            let correct = 0;
+            if (h.questions && h.answers) {
+              h.questions.forEach((q, i) => { if (q.ans === h.answers[i]) correct++; });
+            }
+            html += `
+              <div class="profile-card" onclick="renderHistoryQuiz('${d}')" style="width: 100%; text-align: left; align-items: flex-start; padding: 16px;">
+                <div style="font-weight: bold; color: var(--emerald);">${d}</div>
+                <div style="font-size: 14px; margin-top: 4px; color: var(--slate-300);">${title}</div>
+                ${h.questions ? `<div style="font-size: 14px; margin-top: 4px;">Score: ${correct}/${h.questions.length}</div>` : ''}
+              </div>
+            `;
+          });
+        }
+        historyGrid.innerHTML = html;
+      });
+    }
+
+    if (closeHistoryBtn) {
+      closeHistoryBtn.addEventListener("click", () => {
+        historyModal.style.display = "none";
+      });
+    }
+
+    window.renderHistoryQuiz = function(dateStr) {
+      const history = JSON.parse(localStorage.getItem(`${currentProfile}_quiz_history`) || "{}");
+      const h = history[dateStr];
+      if (!h || !h.questions) {
+        alert("Xin lỗi, dữ liệu bài tập cũ của ngày này không có sẵn.");
+        return;
+      }
+      
+      historyModal.style.display = "none";
+      
+      todayQuizData = h.questions;
+      userAnswers = h.answers || {};
+      
+      const titleEl = document.getElementById("quizTitle");
+      if (titleEl) {
+        titleEl.innerHTML = (h.isReview ? "🎯 7-Day Review Challenge" : "Daily AI Challenge") + ` <span style="font-size:14px;color:var(--slate-400);">(${dateStr})</span>`;
+      }
+
+      renderQuiz(); // This will auto-trigger gradeQuiz(true) because history[getTodayStr()] might not match, wait!
+      // renderQuiz checks history[getTodayStr()], so it might fail for old dates.
+      // Let's do a custom render for history:
+      
+      let html = "";
+      todayQuizData.forEach((q, i) => {
+        html += `
+      <div class="quiz-card" id="qcard-${i}">
+        <div class="quiz-q">${i + 1}. ${highlightVocab(q.q)}</div>
+        ${q.opts.map((opt, j) => `
+          <div class="quiz-opt" id="opt-${i}-${j}" style="cursor:default;pointer-events:none;">
+            ${String.fromCharCode(65 + j)}. ${highlightVocab(opt)}
+          </div>
+        `).join("")}
+        <div class="quiz-exp" id="exp-${i}" style="display:block;"><b>Giải thích:</b> ${highlightVocab(q.exp)}</div>
+      </div>
+    `;
+      });
+      quizContainer.innerHTML = html;
+      submitQuizBtn.style.display = "none";
+      
+      let score = 0;
+      todayQuizData.forEach((q, i) => {
+        const uAns = userAnswers[i];
+        const isCorrect = (uAns === q.ans);
+        if (isCorrect) score++;
+
+        for (let j = 0; j < q.opts.length; j++) {
+          const el = document.getElementById(`opt-${i}-${j}`);
+          if (!el) continue;
+          if (q.opts[j] === q.ans) el.classList.add("correct");
+          else if (q.opts[j] === uAns && !isCorrect) el.classList.add("wrong");
+        }
+      });
+      
+      quizResultLog.innerHTML = `<span style="color: var(--emerald);">Điểm ngày ${dateStr}: ${score}/${todayQuizData.length}</span><br/><button class="btn ghost" style="margin-top:16px;" onclick="restoreTodayQuiz()">Quay lại bài hôm nay</button>`;
+    };
+    
+    window.restoreTodayQuiz = function() {
+      // Reload page to simply restore state
+      location.reload();
+    };
 
     // Gọi render ban đầu
     if (isProfileActive) {
