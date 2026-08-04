@@ -1437,6 +1437,12 @@
           onlineCount.textContent = count;
         });
       }
+    } else if (!isFirebaseConfigured && isProfileActive) {
+      // Cảnh báo nếu thiếu API Key
+      const nameEl = document.getElementById("currentProfileName");
+      if (nameEl) {
+        nameEl.innerHTML += ` <span style="color: var(--amber); font-size: 12px; margin-left: 8px;">(Offline Mode - Thiếu API Key)</span>`;
+      }
     }
 
     function loadDataFromFirebase() {
