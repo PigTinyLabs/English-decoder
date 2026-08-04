@@ -1333,7 +1333,7 @@
 
     // Profile System (Session Storage & Welcome Screen)
     let currentProfile = sessionStorage.getItem("current_profile");
-    let profileList = JSON.parse(localStorage.getItem("profile_list") || '["Khôi"]');
+    let profileList = JSON.parse(localStorage.getItem("profile_list") || '[]');
 
     function selectProfile(name) {
       sessionStorage.setItem("current_profile", name);
