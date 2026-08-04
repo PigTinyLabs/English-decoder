@@ -1782,19 +1782,33 @@
     const wordInput = document.getElementById("wordInput");
     const parseBtn = document.getElementById("parseBtn");
 
+    function activateTab(tabName) {
+      const tab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+      if (!tab) return;
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("panel-" + tabName).classList.add("active");
+      if (tabName === "practice") {
+        if (typeof initSpeechPractice === "function") initSpeechPractice();
+      } else if (tabName === "grammar") {
+        renderErrorDashboard();
+      }
+    }
+
     document.querySelectorAll(".tab").forEach(tab => {
       tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-        tab.classList.add("active");
-        document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
-        if (tab.dataset.tab === "practice") {
-          if (typeof initSpeechPractice === "function") initSpeechPractice();
-        } else if (tab.dataset.tab === "grammar") {
-          renderErrorDashboard();
-        }
+        const tabName = tab.dataset.tab;
+        history.replaceState(null, "", "#tab_" + tabName);
+        activateTab(tabName);
       });
     });
+
+    // Restore tab from URL hash on page load
+    const hashTab = window.location.hash.replace("#tab_", "");
+    if (hashTab && document.querySelector(`.tab[data-tab="${hashTab}"]`)) {
+      activateTab(hashTab);
+    }
 
     async function runParse(word) {
       const w = word.trim().toLowerCase();
