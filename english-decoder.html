@@ -1361,6 +1361,10 @@
     }
 
     function addProfile() {
+      if (profileList.length >= 5) {
+        alert("Hệ thống chỉ cho phép tối đa 5 người dùng để đảm bảo hiệu suất!");
+        return;
+      }
       const newName = prompt("Nhập tên người dùng mới (VD: Heo, Vịt):");
       if (newName && newName.trim() !== "") {
         const n = newName.trim();
@@ -1393,12 +1397,14 @@
               </div>
             `;
           });
-          html += `
-            <div class="profile-card profile-add" onclick="addProfile()">
-              <div class="profile-icon">➕</div>
-              <div class="profile-name">Thêm User</div>
-            </div>
-          `;
+          if (list.length < 5) {
+            html += `
+              <div class="profile-card profile-add" onclick="addProfile()">
+                <div class="profile-icon">➕</div>
+                <div class="profile-name">Thêm User</div>
+              </div>
+            `;
+          }
           grid.innerHTML = html;
         }
 
@@ -2426,6 +2432,13 @@
           return;
         }
 
+        const generateCountKey = `${currentProfile}_gemini_generate_count_${getTodayStr()}`;
+        let generateCount = parseInt(localStorage.getItem(generateCountKey) || "0");
+        if (generateCount >= 5) {
+          alert("Hệ thống giới hạn: Mỗi người chỉ được tạo tối đa 5 lần Đề bài mỗi ngày để tiết kiệm API!");
+          return;
+        }
+
         // Update button text to reflect review if needed
         let streak = parseInt(localStorage.getItem(`${currentProfile}_quiz_streak`) || "0");
         let isReviewDay = streak > 0 && (streak + 1) % 7 === 0;
@@ -2495,6 +2508,10 @@
           };
           localStorage.setItem(`${currentProfile}_gemini_daily_quiz`, JSON.stringify(quizDataToSave));
           if (isFirebaseConfigured) syncDataToFirebase("gemini_daily_quiz", quizDataToSave);
+          
+          generateCount++;
+          localStorage.setItem(generateCountKey, generateCount.toString());
+          if (isFirebaseConfigured) syncDataToFirebase(`generate_count_${dateStr}`, generateCount);
           
           todayQuizData = qList;
 
