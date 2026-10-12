@@ -1,0 +1,83 @@
+/* Mobile Responsive */
+@media (max-width: 900px) {
+  #app {
+    /* minmax(0, …) để hàng tab cuộn ngang thay vì kéo giãn cả trang */
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .tab {
+    white-space: nowrap;
+  }
+
+  .topbar {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 14px;
+  }
+
+  .auth-box {
+    justify-content: center;
+  }
+
+  .promptline {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .input {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  /* 16px to prevent iOS zoom */
+  .title {
+    font-size: 18px;
+  }
+
+  .runrow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .runrow .btn {
+    width: 100%;
+  }
+
+  .locked,
+  .unlocked {
+    text-align: center;
+  }
+
+  .board-grid {
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+  }
+
+  .target-word {
+    font-size: 24px;
+  }
+
+  .mic-btn {
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+}

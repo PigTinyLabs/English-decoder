@@ -1,0 +1,41 @@
+/* Auth UI */
+.auth-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+.auth-name {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* Online Indicator */
+.online-indicator { position: fixed; bottom: 24px; left: 24px; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid var(--border); padding: 8px 16px; border-radius: 24px; display: flex; align-items: center; gap: 10px; color: var(--emerald); font-weight: bold; font-size: 15px; z-index: 998; box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: all 0.3s; cursor: pointer; }
+.online-indicator:hover { transform: translateY(-2px); border-color: var(--emerald); background: rgba(15, 23, 42, 0.9); }
+.pulse-dot { width: 10px; height: 10px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 10px var(--emerald); animation: pulse-online 2s infinite; }
+@keyframes pulse-online {
+0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+/* Welcome Screen */
+.welcome-screen { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.welcome-title { font-family: 'Space Grotesk', sans-serif; font-size: 32px; color: var(--emerald); margin-bottom: 40px; font-weight: bold; text-align: center; }
+.profile-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px; }
+.profile-card { width: 120px; height: 120px; background: rgba(30, 41, 59, 0.6); border: 2px solid var(--border); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; padding: 12px; }
+.profile-card:hover { transform: scale(1.05); border-color: var(--emerald); background: rgba(52, 211, 153, 0.1); }
+.profile-icon { font-size: 40px; margin-bottom: 8px; }
+.profile-name { font-size: 16px; font-weight: bold; color: var(--text); text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-add { border: 2px dashed var(--muted); background: transparent; }
+.profile-add:hover { border-color: var(--cyan); background: rgba(56, 189, 248, 0.1); }
+.profile-add .profile-icon { color: var(--muted); }
+.profile-add:hover .profile-icon { color: var(--cyan); }

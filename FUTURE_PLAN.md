@@ -8,7 +8,7 @@ Dưới đây là các hạng mục (Backlog) chưa thực hiện và lộ trìn
 Để hệ thống có thể lưu trữ dữ liệu vĩnh viễn và mở rộng, chúng ta cần tiến hành chuyển đổi từ file HTML tĩnh sang kiến trúc thật:
 - **Backend**: Khởi tạo Spring Boot 3 + Spring Security JWT.
 - **Database**: PostgreSQL (Lưu trữ từ vựng, lịch sử bài test ngữ pháp, Error Logs).
-- **Frontend**: Migrate `english-decoder.html` sang hệ sinh thái React + TypeScript.
+- **Frontend**: ~~Tách file HTML đơn khối~~ (đã tách thành `index.html` + `css/` + `js/core` + `js/features`, xem README). Bước tiếp: migrate sang React + TypeScript nếu cần.
 - **Infrastructure**: Viết `docker-compose.yml` (tương thích ARM64 để chạy mượt trên máy chủ Oracle Cloud dòng Ampere A1).
 
 ## 2. Epic 3: IELTS Outliner (Tư Duy Diễn Đạt)
@@ -20,6 +20,11 @@ Giải quyết vấn đề "ngợp" thông tin khi viết bài luận hoặc c�
 Nhúng tiếng Anh trực tiếp vào môi trường làm việc kỹ thuật hàng ngày của Lập trình viên.
 - **Lưu trữ thuật ngữ chuyên ngành**: Xây dựng UI lưu từ vựng thu thập được từ Documentation, IDE logs.
 - **Contextual Learning**: Validate yêu cầu bắt buộc: Mỗi từ vựng khi thêm vào hệ thống phải đi kèm ít nhất 1 câu ví dụ thực tế liên quan đến dự án đang code.
+
+## 4. Epic 5: Chắp Bút Writing ✅
+Đã có: 1000 câu (40 chủ đề × 25 câu), AI chấm bài, đọc lại câu, đối đáp ôn tập, lịch ôn Leitner.
+- Cho phép nhập bộ câu riêng từ file JSON / CSV.
+- Thống kê tiến độ theo ngày (biểu đồ số câu viết / ôn).
 
 ---
 *Ghi chú: Các hạng mục này sẽ được triển khai trong Sprint 3 và các Sprint tiếp theo.*

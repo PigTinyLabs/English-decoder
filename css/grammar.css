@@ -1,0 +1,76 @@
+/* Grammar Tab Styles */
+.syntax-subject {
+  color: var(--emerald);
+  font-weight: bold;
+  padding: 2px 4px;
+  background: rgba(52, 211, 153, 0.1);
+  border-radius: 4px;
+}
+
+.syntax-verb {
+  color: var(--red);
+  font-weight: bold;
+  padding: 2px 4px;
+  background: rgba(248, 113, 113, 0.1);
+  border-radius: 4px;
+}
+
+.syntax-object {
+  color: var(--amber);
+  font-weight: bold;
+  padding: 2px 4px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 4px;
+}
+
+.syntax-other {
+  color: var(--text);
+}
+
+.tense-quiz-text {
+  font-size: 16px;
+  margin-bottom: 12px;
+  line-height: 1.8;
+}
+
+.tense-input {
+  width: 140px;
+  text-align: center;
+  font-weight: bold;
+  color: var(--cyan);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--border);
+  outline: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+}
+
+.tense-input:focus {
+  border-bottom-color: var(--cyan);
+}
+
+.log-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+}
+
+.log-item-title {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.log-item-count {
+  color: var(--red);
+  background: rgba(248, 113, 113, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}

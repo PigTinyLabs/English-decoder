@@ -24,9 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Rename file for GitHub Pages
-        run: cp english-decoder.html index.html
-        
       - name: Generate env.js
         run: |
           echo "window.ENV = {" > env.js
