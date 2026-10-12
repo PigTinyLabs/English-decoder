@@ -49,6 +49,7 @@ js/
     reading/
       stories.js            # truyện song ngữ mẫu (tự viết)
       epub.js               # đọc EPUB (JSZip) → chương + cặp đoạn Anh/Việt
+      drive.js              # danh sách truyện trên Google Drive + tải qua Drive API
       reader.js             # UI: thư viện, trình đọc, nghe máy đọc, song ngữ, tra từ
       readaloud.js          # 🎤 tự đọc to: nhận giọng liên tục, dò chữ, chấm điểm
   main.js                   # bootstrap: init từng feature theo thứ tự
@@ -75,7 +76,11 @@ Dữ liệu: `writing_progress`, `writing_extra` (đồng bộ Firestore), `writ
 
 ## Đọc Truyện (Reading)
 
-- **Thư viện**: 3 truyện song ngữ mẫu + sách bạn tự nhập (📥 Nhập EPUB). Sách nhập được lưu trong IndexedDB của trình duyệt, **không** đưa lên repo hay Firebase (truyện có bản quyền; repo deploy public). `*.epub` đã nằm trong `.gitignore`.
+- **Thư viện**:
+  - **📂 Truyện từ Drive** (`reading/drive.js`): 9 cuốn trong thư mục Google Drive chia sẻ công khai. Repo chỉ lưu id file; lần mở đầu app tải EPUB qua Google Drive API rồi lưu vào IndexedDB. Cần `DRIVE_API_KEY` (API key GCP đã bật *Google Drive API*, thêm vào GitHub Secrets). Chưa có key thì thẻ sách hướng dẫn tải tay → 📥 Nhập EPUB (file trùng tên tự gắn vào kệ Drive).
+  - **Truyện mẫu**: 3 truyện song ngữ ngắn tự viết.
+  - **Sách của bạn**: EPUB tự nhập.
+  - Nội dung sách chỉ lưu trong IndexedDB của trình duyệt, **không** đưa lên repo hay Firebase (truyện có bản quyền; repo deploy public). `*.epub` đã nằm trong `.gitignore`.
 - **Tách song ngữ**: đoạn có chữ cái riêng của tiếng Việt → bản dịch. Mỗi chương thử ghép cả hai chiều (Anh→Việt và Việt→Anh), chọn chiều khớp hơn theo tên riêng/con số trùng nhau và tỉ lệ độ dài. Lọc dòng nhiễu kiểu "Dịch bởi…", "Link:", URL.
 - **🔊 Nghe đọc**: đọc từng câu, tô sáng câu đang đọc, tự cuộn và sang chương sau; chỉnh tốc độ 0.75–1.25×; tuỳ chọn 🇻🇳 đọc kèm bản dịch (giọng tiếng Việt của trình duyệt).
 - **🎤 Tự đọc**: đọc to như đọc truyện; chữ đọc đúng sáng xanh, chữ bỏ sót gạch đỏ; hết đoạn tự chấm % và sang đoạn kế. Cần Chrome/Edge + quyền micro.

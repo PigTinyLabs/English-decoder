@@ -29,6 +29,7 @@ jobs:
           echo "window.ENV = {" > env.js
           echo "  GEMINI_PROXY_URL: '${{ secrets.GEMINI_PROXY_URL }}'," >> env.js
           echo "  GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'," >> env.js
+          echo "  DRIVE_API_KEY: '${{ secrets.DRIVE_API_KEY }}'," >> env.js
           echo "  FIREBASE_API_KEY: '${{ secrets.FIREBASE_API_KEY }}'," >> env.js
           echo "  FIREBASE_AUTH_DOMAIN: '${{ secrets.FIREBASE_AUTH_DOMAIN }}'," >> env.js
           echo "  FIREBASE_PROJECT_ID: '${{ secrets.FIREBASE_PROJECT_ID }}'," >> env.js

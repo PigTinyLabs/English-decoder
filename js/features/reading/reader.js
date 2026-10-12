@@ -53,6 +53,49 @@ async function refreshLibrary() {
   if (R.view === "library") renderReading();
 }
 
+// Sách tự nhập (sách Drive có kệ riêng)
+function userBooks() { return R.books.filter(b => b.source !== "drive"); }
+
+function driveCardHtml(meta) {
+  const saved = R.books.find(b => b.id === driveBookId(meta.driveId));
+  if (saved) return bookCardHtml(saved);
+  const loading = R.driveLoading === meta.driveId;
+  const error = R.driveErrors?.[meta.driveId];
+  return `
+    <div class="rd-book rd-book-cloud" data-drive-book="${escapeHtml(meta.driveId)}">
+      <div class="rd-book-cover">${meta.cover}</div>
+      <div class="rd-book-info">
+        <div class="rd-book-title">${escapeHtml(meta.title)}</div>
+        <div class="sub">${escapeHtml(meta.titleVi)}</div>
+        <div class="rd-book-meta">${loading ? "⏳ Đang tải từ Drive…" : `☁️ Bấm để tải · ${escapeHtml(meta.size)}`}</div>
+        ${error ? `<div class="rd-book-err">${escapeHtml(error)}<br>
+          <a href="${driveFileUrl(meta.driveId)}" target="_blank" rel="noopener">Mở trên Drive</a> → tải file về → bấm <b>📥 Nhập EPUB</b>.</div>` : ""}
+      </div>
+    </div>`;
+}
+
+async function openDriveBook(driveId) {
+  const id = driveBookId(driveId);
+  if (R.books.some(b => b.id === id)) return openBook(id);
+  if (R.driveLoading) return;
+  const meta = DRIVE_BOOKS.find(b => b.driveId === driveId);
+  R.driveLoading = driveId;
+  R.driveErrors = { ...R.driveErrors, [driveId]: "" };
+  renderReading();
+  try {
+    const book = await downloadDriveBook(meta);
+    await LocalDB.put("books", book);
+    R.driveLoading = null;
+    await refreshLibrary();
+    if (R.view === "library") openBook(id);
+  } catch (e) {
+    console.warn(e);
+    R.driveLoading = null;
+    R.driveErrors = { ...R.driveErrors, [driveId]: e.message };
+    renderReading();
+  }
+}
+
 function bookCardHtml(book) {
   const p = R.progress[book.id];
   const chapters = book.chapters.length;
@@ -72,7 +115,7 @@ function bookCardHtml(book) {
         </div>
         ${p ? `<div class="wr-progress"><span style="width:${pct}%"></span></div><div class="rd-book-meta">Đang ở chương ${p.ch + 1}/${chapters}</div>` : ""}
       </div>
-      ${book.source === "epub" ? `<button class="btn-icon sm rd-book-del" data-delete-book="${escapeHtml(book.id)}" title="Xoá khỏi máy">🗑</button>` : ""}
+      ${book.source === "epub" || book.source === "drive" ? `<button class="btn-icon sm rd-book-del" data-delete-book="${escapeHtml(book.id)}" title="Xoá bản lưu trên máy">🗑</button>` : ""}
     </div>`;
 }
 
@@ -93,11 +136,14 @@ function libraryHtml() {
     </div>
     ${recent ? `<button class="rd-continue" data-open-book="${escapeHtml(recent.id)}">▶ Đọc tiếp <b>${escapeHtml(recent.title)}</b> — chương ${R.progress[recent.id].ch + 1}</button>` : ""}
     <div id="rdImportStatus"></div>
+    <div class="board-title">📂 Truyện song ngữ từ Drive</div>
+    <div class="rd-shelf">${DRIVE_BOOKS.map(driveCardHtml).join("")}</div>
+    <div class="sub" style="margin:8px 0 24px;">Tải từ <a href="${DRIVE_FOLDER_URL}" target="_blank" rel="noopener" style="color:var(--cyan)">thư mục Google Drive</a> ở lần mở đầu tiên, sau đó lưu trên máy để đọc lại ngay.</div>
     <div class="board-title">Truyện mẫu</div>
     <div class="rd-shelf">${SAMPLE_BOOKS.map(bookCardHtml).join("")}</div>
     <div class="board-title" style="margin-top:24px;">Sách của bạn</div>
-    ${R.books.length
-      ? `<div class="rd-shelf">${R.books.map(bookCardHtml).join("")}</div>`
+    ${userBooks().length
+      ? `<div class="rd-shelf">${userBooks().map(bookCardHtml).join("")}</div>`
       : `<div class="wr-mode">Chưa có sách nào. Tải file <b>.epub</b> (VD truyện song ngữ trên Google Drive của bạn) về máy rồi bấm <b>📥 Nhập EPUB</b>.</div>`}
     <div class="sub" style="margin-top:12px;">🔒 Sách bạn nhập chỉ được lưu trong trình duyệt trên máy này, không tải lên đâu cả.</div>
   `;
@@ -108,7 +154,13 @@ async function importEpubFiles(files) {
   for (const file of files) {
     status.innerHTML = `<div class="wr-mode">⏳ Đang đọc <b>${escapeHtml(file.name)}</b>…</div>`;
     try {
-      const book = await parseEpub(file);
+      let book = await parseEpub(file);
+      // File tải tay từ thư mục Drive → gắn vào đúng thẻ trên kệ Drive
+      const name = `${file.name} ${book.title}`.toLowerCase();
+      const meta = DRIVE_BOOKS.find(m => name.includes(m.title.toLowerCase()));
+      if (meta) {
+        book = { ...book, id: driveBookId(meta.driveId), title: meta.title, titleVi: meta.titleVi, cover: meta.cover, source: "drive", driveId: meta.driveId };
+      }
       await LocalDB.put("books", book);
       status.innerHTML = `<div class="wr-mode on">✓ Đã nhập <b>${escapeHtml(book.title)}</b>: ${book.chapters.length} chương, ${book.stats.paras} đoạn, ${book.stats.translated} đoạn có bản dịch.</div>`;
     } catch (e) {
@@ -419,7 +471,7 @@ async function translateParagraph(i, btn) {
   try {
     const vi = await Gemini.generate(`Dịch đoạn văn tiếng Anh sau sang tiếng Việt tự nhiên, giữ giọng kể chuyện. Chỉ trả về bản dịch, không giải thích.\n\n${para.en}`, { json: false });
     para.vi = vi.trim();
-    if (R.book.source === "epub") await LocalDB.put("books", R.book);
+    if (R.book.source === "epub" || R.book.source === "drive") await LocalDB.put("books", R.book);
     const el = paraEl(i);
     el.outerHTML = paraHtml(para, i, new Set(vocabList.map(v => v.word.toLowerCase())));
   } catch (e) {
@@ -451,6 +503,8 @@ function handleReadingClick(e) {
     if (book && confirm(`Xoá "${book.title}" khỏi máy này?`)) LocalDB.delete("books", book.id).then(refreshLibrary);
     return;
   }
+  const drive = !t.closest("a") && t.closest("[data-drive-book]");
+  if (drive) return openDriveBook(drive.dataset.driveBook);
   const open = t.closest("[data-open-book]");
   if (open) return openBook(open.dataset.openBook);
 
