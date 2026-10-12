@@ -1,1 +1,3 @@
 env.js
+# Sách có bản quyền: chỉ nhập vào app trên máy, không đưa lên repo public
+*.epub

@@ -1,6 +1,9 @@
 import os
 import subprocess
 
+# Chạy từ bất kỳ đâu: file mp3 luôn ghi vào thư mục audio/ ở gốc repo
+AUDIO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "audio")
+
 IPA_SYMBOLS = [
     # Vowels
     "iː", "ɪ", "e", "æ", "ɑː", "ɒ", "ɔː", "ʊ", "uː", "ʌ", "ɜː", "ə",
@@ -25,8 +28,8 @@ IPA_TO_ESPEAK = {
 
 for sym in IPA_SYMBOLS:
     espeak_sym = IPA_TO_ESPEAK.get(sym, sym)
-    wav_file = f"audio/{sym}.wav"
-    mp3_file = f"audio/{sym}.mp3"
+    wav_file = os.path.join(AUDIO_DIR, f"{sym}.wav")
+    mp3_file = os.path.join(AUDIO_DIR, f"{sym}.mp3")
     
     subprocess.run(["espeak", "-v", "en-us", "-w", wav_file, f"[[{espeak_sym}]]"])
     

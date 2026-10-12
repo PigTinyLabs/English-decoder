@@ -71,4 +71,4 @@ def speak_word(text: str = Query(..., description="Từ cần phát âm")):
 def get_symbols():
     return {"supported_symbols": list(IPA_TO_ESPEAK.keys())}
 
-# Chạy: uvicorn server:app --port 8008 --reload
+# Chạy: cd tools && uvicorn server:app --port 8008 --reload

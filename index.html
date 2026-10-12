@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>English Decoder :: IPA Compiler</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <!-- Firebase SDKs (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/compromise"></script>
+  <!-- Giải nén EPUB cho tab Đọc Truyện -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/ipa.css" />
+  <link rel="stylesheet" href="css/grammar.css" />
+  <link rel="stylesheet" href="css/quiz.css" />
+  <link rel="stylesheet" href="css/vocab.css" />
+  <link rel="stylesheet" href="css/profile.css" />
+  <link rel="stylesheet" href="css/writing.css" />
+  <link rel="stylesheet" href="css/reading.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+
+<body>
+
+<!-- Welcome Screen -->
+<div class="welcome-screen" id="welcomeScreen">
+
+  <div class="welcome-title">Ai đang học hôm nay?</div>
+  <div class="profile-grid" id="profileGrid">
+    <!-- Profiles will be injected here -->
+  </div>
+</div>
+
+<div id="app" style="display: none;">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="header">
+        <h1 class="title">English<br><span>Decoder</span></h1>
+        <div class="sub">IPA Compiler & AI</div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="parser"><span class="icon">📖</span> Parser</button>
+        <button class="tab" data-tab="board"><span class="icon">🔤</span> IPA Board</button>
+        <button class="tab" data-tab="practice"><span class="icon">🎤</span> Luyện Âm</button>
+        <button class="tab" data-tab="grammar"><span class="icon">📝</span> Ngữ Pháp</button>
+        <button class="tab" data-tab="writing"><span class="icon">✍️</span> Chắp Bút</button>
+        <button class="tab" data-tab="reading"><span class="icon">📗</span> Đọc Truyện</button>
+        <button class="tab" data-tab="quiz"><span class="icon">🧠</span> AI Quiz</button>
+        <button class="tab" data-tab="vocab"><span class="icon">📚</span> Từ Vựng</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="topbar">
+        <div class="auth-box" id="profileBox">
+          <span class="auth-name" id="currentProfileName">👤 Đang tải...</span>
+          <button class="btn ghost" id="changeProfileBtn" style="padding: 6px 12px; font-size: 11px;">Đổi / Tạo
+            User</button>
+        </div>
+      </div>
+
+      <!-- Panels -->
+      <div class="panel active" id="panel-parser">
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="wordInput" placeholder="nhập một từ tiếng Anh..." value="buy" autocomplete="off"
+            spellcheck="false" />
+          <button class="btn" id="parseBtn">Parse</button>
+        </div>
+        <div id="statusBox"></div>
+        <div id="resultBox"></div>
+        <div id="logBox"></div>
+      </div>
+
+      <div class="panel" id="panel-practice">
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="pracInput" placeholder="nhập một từ tiếng Anh cần luyện..." autocomplete="off"
+            spellcheck="false" />
+          <button class="btn" id="pracParseBtn">Cập nhật</button>
+        </div>
+        <div class="sub" style="margin-top: -10px; margin-bottom: 20px;">Luyện đọc từ mục tiêu. Trình duyệt cần cấp
+          quyền Microphone (Google Chrome).</div>
+        <div class="practice-box" id="practiceBox">
+          <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <div class="target-word" id="pracTargetWord" style="margin-bottom: 0;">...</div>
+            <button class="btn ghost" id="pracPlayBtn"
+              style="padding: 0; width: 32px; height: 32px; display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 16px;"
+              title="Nghe mẫu">🔊</button>
+          </div>
+          <div class="target-ipa" id="pracTargetIpa">/.../</div>
+          <button class="mic-btn" id="micBtn" title="Bấm để ghi âm">🎤</button>
+          <div class="diff-box">
+            <div class="diff-word" id="pracSpokenWord">Nhấn mic và đọc to từ trên</div>
+            <div class="diff-result" id="pracDiffResult"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-board">
+        <div class="status">Click vào ký hiệu để nghe ví dụ (dùng giọng đọc trình duyệt).</div>
+        <div id="boardBox"></div>
+      </div>
+
+      <div class="panel" id="panel-grammar">
+        <div class="board-group">
+          <div class="board-title">1. Syntax Highlighter (Bóc tách S-V-O)</div>
+          <div class="promptline">
+            <span class="caret">&gt;</span>
+            <input class="input" id="syntaxInput" placeholder="Nhập một câu tiếng Anh..."
+              value="The quick brown fox jumps over the lazy dog" autocomplete="off" spellcheck="false" />
+            <button class="btn" id="syntaxParseBtn">Analyze</button>
+          </div>
+          <div id="syntaxResult"
+            style="margin-top: 10px; font-size: 16px; line-height: 1.6; min-height: 40px; padding: 12px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+            <span class="sub">Kết quả bóc tách sẽ hiện ở đây...</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; gap: 12px;">
+            <span><span class="syntax-subject">Subject (Chủ ngữ)</span></span>
+            <span><span class="syntax-verb">Verb (Động từ)</span></span>
+            <span><span class="syntax-object">Object (Tân ngữ)</span></span>
+          </div>
+        </div>
+
+        <div class="board-group" style="margin-top: 28px;">
+          <div class="board-title">2. Tense Logic Engine (Vá lỗi 5 Thì cơ bản)</div>
+          <div class="promptline">
+            <select class="input" id="tenseSelect" style="max-width: 200px;">
+              <option value="present_simple">Hiện tại đơn (Present Simple)</option>
+              <option value="present_continuous">Hiện tại tiếp diễn (Present Continuous)</option>
+              <option value="past_simple">Quá khứ đơn (Past Simple)</option>
+              <option value="future_simple">Tương lai đơn (Future Simple)</option>
+              <option value="present_perfect">Hiện tại hoàn thành (Present Perfect)</option>
+            </select>
+            <button class="btn" id="generateTenseBtn">Generate Quiz</button>
+          </div>
+          <div id="tenseQuizBox"
+            style="margin-top: 10px; min-height: 80px; padding: 16px; background: var(--surface-alt); border-radius: 8px; border: 1px solid var(--border);">
+            <div class="sub">Chọn thì và bấm Generate Quiz để lấy câu hỏi.</div>
+          </div>
+        </div>
+
+        <div class="board-group" style="margin-top: 28px; border-top: 1px dashed var(--border); padding-top: 24px;">
+          <div class="board-title" style="color: var(--amber);">3. Error Logging Dashboard</div>
+          <div class="sub" style="margin-bottom: 12px;">Thống kê tần suất mắc lỗi ngữ pháp của bạn (lưu trên
+            LocalStorage). Để triệt tiêu lỗi tận gốc!</div>
+          <div id="errorLogDashboard" style="display: block;">
+          </div>
+          <button class="btn ghost" id="clearLogsBtn" style="margin-top: 12px;">Reset Data</button>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-writing">
+        <div id="writingRoot"></div>
+      </div>
+
+      <div class="panel" id="panel-reading">
+        <div id="readingRoot"></div>
+      </div>
+
+      <div class="panel" id="panel-quiz">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div class="board-title" style="margin: 0; color: var(--emerald);" id="quizTitle">Daily AI Challenge</div>
+          <div class="streak-badge" id="streakBadge">🔥 0 days</div>
+        </div>
+
+        <div class="sub" style="margin-bottom: 20px;">Gọi API Gemini mỗi ngày để tạo 1 bộ đề trắc nghiệm ngẫu nhiên. Giữ
+          chuỗi làm đề để tăng streak!</div>
+
+        <div class="promptline" style="gap: 8px;">
+          <select class="input" id="quizLevel" style="flex: 1;">
+            <option value="B1 (Vừa phải)">B1 (Vừa phải)</option>
+            <option value="B2 (Nâng cao)">B2 (Nâng cao)</option>
+            <option value="C1 (Thử thách)">C1 (Thử thách)</option>
+          </select>
+          <select class="input" id="quizAmount" style="flex: 1;">
+            <option value="5">5 câu</option>
+            <option value="15">15 câu</option>
+            <option value="30">30 câu</option>
+          </select>
+          <button class="btn" id="generateDailyBtn" style="flex: 2;">Tạo/Lấy bộ đề hôm nay</button>
+          <button class="btn ghost" id="showHistoryBtn" style="flex: 0 0 auto; padding: 0 16px;" title="Xem lại đề cũ">📜</button>
+        </div>
+
+        <div id="quizContainer" style="margin-top: 20px;"></div>
+
+        <button class="btn" id="submitQuizBtn" style="width: 100%; margin-top: 16px; display: none;">Nộp bài & Chấm
+          điểm</button>
+        <div id="quizResultLog" style="margin-top: 16px; text-align: center; font-size: 16px; font-weight: bold;"></div>
+      </div>
+
+      <div class="panel" id="panel-vocab">
+        <div class="board-title">My Vocabulary Notebook</div>
+        <div class="promptline">
+          <span class="caret">&gt;</span>
+          <input class="input" id="newVocabWord" placeholder="Từ mới..." style="flex: 1;" autocomplete="off" />
+          <input class="input" id="newVocabMean" placeholder="Nghĩa/Ghi chú..." style="flex: 2;" autocomplete="off" />
+          <button class="btn" id="addVocabBtn">Add</button>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <span class="sub" id="vocabCount" style="font-weight: bold;">0 words saved</span>
+          <button class="btn ghost" id="reviewVocabBtn">Review Mode (Hide Meanings)</button>
+        </div>
+
+        <div class="vocab-list" id="vocabListContainer">
+          <!-- Words will appear here -->
+        </div>
+      </div>
+    </div> <!-- End of main-content -->
+
+    <!-- Floating Vocab System -->
+    <button class="fab-btn" id="fabBtn" title="Thêm từ mới nhanh">➕</button>
+    <div class="vocab-modal" id="vocabModal">
+      <div class="board-title" style="margin-top: 0; margin-bottom: 16px;">Ghi chú nhanh từ mới</div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <input class="input" id="fabVocabWord" placeholder="Từ tiếng Anh..." autocomplete="off" spellcheck="false" />
+        <input class="input" id="fabVocabMean" placeholder="Nghĩa của từ..." autocomplete="off" />
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+          <button class="btn ghost" id="fabCloseBtn" style="padding: 8px 16px;">Đóng</button>
+          <button class="btn" id="fabSaveBtn" style="padding: 8px 16px;">Lưu Từ</button>
+        </div>
+      </div>
+    </div>
+    <div class="tooltip-box" id="vocabTooltip"></div>
+
+    <!-- Đọc Truyện: thanh điều khiển nổi + popup tra từ -->
+    <div class="rd-bar" id="readingBar"></div>
+    <div class="rd-pop" id="rdWordPopup"></div>
+
+  <!-- History Modal -->
+  <div class="welcome-screen" id="historyModal" style="background: rgba(15, 23, 42, 0.9); z-index: 10001; display: none;">
+    <div class="welcome-title">Lịch sử làm bài</div>
+    <div class="profile-grid" id="historyGrid" style="margin-bottom: 24px;"></div>
+    <button class="btn ghost" id="closeHistoryBtn">Đóng</button>
+  </div>
+
+  <!-- Online Indicator -->
+  <div class="online-indicator" id="onlineIndicator" title="Số người đang học lúc này" style="display: none;">
+    <div class="pulse-dot"></div>
+    👁 <span id="onlineCount">1</span>
+  </div>
+
+</div>
+
+  <!-- env.js được sinh từ GitHub Secrets khi deploy (local: copy env.js.example) -->
+  <script src="env.js"></script>
+
+  <!-- Core -->
+  <script src="js/core/utils.js"></script>
+  <script src="js/core/text.js"></script>
+  <script src="js/core/idb.js"></script>
+  <script src="js/core/store.js"></script>
+  <script src="js/core/profile.js"></script>
+  <script src="js/core/audio.js"></script>
+  <script src="js/core/gemini.js"></script>
+  <script src="js/core/router.js"></script>
+
+  <!-- Features -->
+  <script src="js/features/ipa.js"></script>
+  <script src="js/features/parser.js"></script>
+  <script src="js/features/practice.js"></script>
+  <script src="js/features/grammar.js"></script>
+  <script src="js/features/vocab.js"></script>
+  <script src="js/features/quiz.js"></script>
+  <script src="js/features/writing/curriculum.js"></script>
+  <script src="js/features/writing/lessons/week1.js"></script>
+  <script src="js/features/writing/lessons/week2.js"></script>
+  <script src="js/features/writing/lessons/week3.js"></script>
+  <script src="js/features/writing/lessons/week4.js"></script>
+  <script src="js/features/writing/engine.js"></script>
+  <script src="js/features/writing/writing.js"></script>
+  <script src="js/features/writing/dialogue.js"></script>
+  <script src="js/features/reading/stories.js"></script>
+  <script src="js/features/reading/epub.js"></script>
+  <script src="js/features/reading/drive.js"></script>
+  <script src="js/features/reading/reader.js"></script>
+  <script src="js/features/reading/readaloud.js"></script>
+
+  <script src="js/main.js"></script>
+</body>
+
+</html>
