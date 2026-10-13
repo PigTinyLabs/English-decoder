@@ -69,7 +69,7 @@ function driveCardHtml(meta) {
         <div class="sub">${escapeHtml(meta.titleVi)}</div>
         <div class="rd-book-meta">${loading ? "⏳ Đang tải từ Drive…" : `☁️ Bấm để tải · ${escapeHtml(meta.size)}`}</div>
         ${error ? `<div class="rd-book-err">${escapeHtml(error)}<br>
-          <a href="${driveFileUrl(meta.driveId)}" target="_blank" rel="noopener">Mở trên Drive</a> → tải file về → bấm <b>📥 Nhập EPUB</b>.</div>` : ""}
+          <a href="${driveFileUrl(meta.driveId)}" target="_blank" rel="noopener">Mở trên Drive</a> → tải file về → bấm <b>📥 Nhập EPUB / ZIP</b>.</div>` : ""}
       </div>
     </div>`;
 }
@@ -130,47 +130,85 @@ function libraryHtml() {
         <div class="sub">Đọc truyện song ngữ: nghe máy đọc, tự đọc to để luyện phát âm, bật/tắt bản dịch để tự đọc hiểu.</div>
       </div>
       <div class="rd-import">
-        <label class="btn" for="rdImportInput">📥 Nhập EPUB</label>
-        <input type="file" id="rdImportInput" accept=".epub,application/epub+zip" multiple hidden />
+        <label class="btn" for="rdImportInput">📥 Nhập EPUB / ZIP</label>
+        <input type="file" id="rdImportInput" accept=".epub,.zip,application/epub+zip,application/zip" multiple hidden />
       </div>
     </div>
     ${recent ? `<button class="rd-continue" data-open-book="${escapeHtml(recent.id)}">▶ Đọc tiếp <b>${escapeHtml(recent.title)}</b> — chương ${R.progress[recent.id].ch + 1}</button>` : ""}
     <div id="rdImportStatus"></div>
     <div class="board-title">📂 Truyện song ngữ từ Drive</div>
+    ${DRIVE_BOOKS.some(m => !R.books.some(b => b.id === driveBookId(m.driveId))) ? `
+      <div class="wr-mode rd-drive-hint">
+        ⚡ <b>Nạp cả 9 cuốn một lần:</b> mở <a href="${DRIVE_FOLDER_URL}" target="_blank" rel="noopener">thư mục Google Drive</a>
+        → bấm <b>Tải xuống tất cả</b> (Drive nén thành 1 file .zip) → bấm <b>📥 Nhập EPUB / ZIP</b> và chọn file zip đó.
+        Sách được lưu trên máy này, lần sau mở là đọc ngay.
+      </div>` : ""}
     <div class="rd-shelf">${DRIVE_BOOKS.map(driveCardHtml).join("")}</div>
-    <div class="sub" style="margin:8px 0 24px;">Tải từ <a href="${DRIVE_FOLDER_URL}" target="_blank" rel="noopener" style="color:var(--cyan)">thư mục Google Drive</a> ở lần mở đầu tiên, sau đó lưu trên máy để đọc lại ngay.</div>
-    <div class="board-title">Truyện mẫu</div>
+    <div class="board-title" style="margin-top:24px;">Truyện mẫu</div>
     <div class="rd-shelf">${SAMPLE_BOOKS.map(bookCardHtml).join("")}</div>
     <div class="board-title" style="margin-top:24px;">Sách của bạn</div>
     ${userBooks().length
       ? `<div class="rd-shelf">${userBooks().map(bookCardHtml).join("")}</div>`
-      : `<div class="wr-mode">Chưa có sách nào. Tải file <b>.epub</b> (VD truyện song ngữ trên Google Drive của bạn) về máy rồi bấm <b>📥 Nhập EPUB</b>.</div>`}
+      : `<div class="wr-mode">Chưa có sách nào. Tải file <b>.epub</b> (hoặc .zip chứa nhiều epub) về máy rồi bấm <b>📥 Nhập EPUB / ZIP</b>.</div>`}
     <div class="sub" style="margin-top:12px;">🔒 Sách bạn nhập chỉ được lưu trong trình duyệt trên máy này, không tải lên đâu cả.</div>
   `;
 }
 
+// File .zip (VD "Tải xuống tất cả" từ thư mục Drive) → bung ra các file .epub bên trong
+async function expandImportFiles(files) {
+  const out = [];
+  for (const file of files) {
+    if (!/\.zip$/i.test(file.name)) { out.push(file); continue; }
+    const zip = await JSZip.loadAsync(file);
+    const entries = Object.values(zip.files).filter(e => !e.dir && /\.epub$/i.test(e.name) && !e.name.includes("__MACOSX"));
+    for (const entry of entries) {
+      const blob = await entry.async("blob");
+      out.push(new File([blob], entry.name.split("/").pop()));
+    }
+  }
+  return out;
+}
+
 async function importEpubFiles(files) {
   const status = document.getElementById("rdImportStatus");
-  for (const file of files) {
-    status.innerHTML = `<div class="wr-mode">⏳ Đang đọc <b>${escapeHtml(file.name)}</b>…</div>`;
+  const lines = [];
+  const show = extra => {
+    status.innerHTML = `<div class="wr-mode">${lines.concat(extra ? [extra] : []).join("<br>")}</div>`;
+  };
+
+  show("⏳ Đang mở file…");
+  let epubs;
+  try {
+    epubs = await expandImportFiles(files);
+  } catch (e) {
+    status.innerHTML = `<div class="wr-mode" style="color:var(--red)">✗ Không mở được file: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+  if (!epubs.length) {
+    status.innerHTML = `<div class="wr-mode" style="color:var(--red)">✗ Không tìm thấy file .epub nào.</div>`;
+    return;
+  }
+
+  for (const [i, file] of epubs.entries()) {
+    show(`⏳ (${i + 1}/${epubs.length}) Đang đọc <b>${escapeHtml(file.name)}</b>…`);
     try {
       let book = await parseEpub(file);
-      // File tải tay từ thư mục Drive → gắn vào đúng thẻ trên kệ Drive
+      // File tải từ thư mục Drive → gắn vào đúng thẻ trên kệ Drive
       const name = `${file.name} ${book.title}`.toLowerCase();
       const meta = DRIVE_BOOKS.find(m => name.includes(m.title.toLowerCase()));
       if (meta) {
         book = { ...book, id: driveBookId(meta.driveId), title: meta.title, titleVi: meta.titleVi, cover: meta.cover, source: "drive", driveId: meta.driveId };
       }
       await LocalDB.put("books", book);
-      status.innerHTML = `<div class="wr-mode on">✓ Đã nhập <b>${escapeHtml(book.title)}</b>: ${book.chapters.length} chương, ${book.stats.paras} đoạn, ${book.stats.translated} đoạn có bản dịch.</div>`;
+      lines.push(`✓ <b>${escapeHtml(book.title)}</b>: ${book.chapters.length} chương, ${book.stats.translated}/${book.stats.paras} đoạn có bản dịch`);
     } catch (e) {
       console.error(e);
-      status.innerHTML = `<div class="wr-mode" style="color:var(--red)">✗ ${escapeHtml(file.name)}: ${escapeHtml(e.message)}</div>`;
+      lines.push(`<span style="color:var(--red)">✗ ${escapeHtml(file.name)}: ${escapeHtml(e.message)}</span>`);
     }
   }
-  const msg = status.innerHTML;
+  const html = `<div class="wr-mode on">${lines.join("<br>")}</div>`;
   await refreshLibrary();
-  document.getElementById("rdImportStatus").innerHTML = msg;
+  document.getElementById("rdImportStatus").innerHTML = html;
 }
 
 // ---- Reader -----------------------------------------------------------------------------

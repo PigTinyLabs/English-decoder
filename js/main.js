@@ -3,6 +3,7 @@
 (function main() {
   if (!initProfile()) return; // đang ở màn hình chọn user
 
+  initTheme();
   initIpaBoard();
   initParser();
   initPractice();

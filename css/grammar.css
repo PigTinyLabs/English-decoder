@@ -42,7 +42,7 @@
   border: none;
   border-bottom: 2px solid var(--border);
   outline: none;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-ui);
   font-size: 16px;
 }
 
@@ -58,7 +58,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 8px;
-  font-size: 13.5px;
+  font-size: 14.5px;
 }
 
 .log-item-title {
@@ -71,6 +71,6 @@
   background: rgba(248, 113, 113, 0.1);
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
 }

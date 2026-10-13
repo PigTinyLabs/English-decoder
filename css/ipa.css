@@ -5,26 +5,26 @@
 }
 
 .word {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-head);
   font-size: 20px;
   font-weight: 700;
 }
 
 .pos {
   color: var(--amber);
-  font-size: 12px;
+  font-size: 13px;
   margin-left: 8px;
 }
 
 .def {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 4px;
 }
 
 .label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 8px;
@@ -124,12 +124,12 @@
 
 .locked {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
 .unlocked {
   color: var(--emerald);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
 .log {
@@ -141,7 +141,7 @@
 .logrow {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--muted);
   padding: 4px 0;
 }
@@ -151,7 +151,7 @@
 }
 
 .board-group {
-  background: rgba(30, 41, 59, 0.3);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
@@ -160,7 +160,7 @@
 }
 
 .board-title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-head);
   font-size: 16px;
   color: var(--emerald);
   margin-bottom: 16px;
@@ -205,7 +205,7 @@
 }
 
 .board-ex {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--muted);
   display: block;
   margin-top: 3px;
@@ -231,7 +231,7 @@
 .target-word {
   font-size: 28px;
   font-weight: 700;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-head);
   margin-bottom: 4px;
 }
 
@@ -316,4 +316,9 @@
   color: var(--red);
   border-bottom: 2px dashed var(--red);
   opacity: 0.8;
+}
+
+/* Ký hiệu IPA dùng font mono (Be Vietnam Pro không có đủ glyph IPA) */
+.tok, .chip, .board-sym, .target-ipa, .diff-result, .buildline, .tense-input, .rd-pop-ipa {
+  font-family: var(--font-mono);
 }

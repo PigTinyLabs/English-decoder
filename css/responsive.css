@@ -23,6 +23,11 @@
     white-space: nowrap;
   }
 
+  /* Sidebar thành hàng tab cuộn ngang → bỏ nhãn nhóm */
+  .tab-group {
+    display: none;
+  }
+
   .topbar {
     justify-content: center;
   }

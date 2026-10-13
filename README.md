@@ -53,7 +53,8 @@ js/
       reader.js             # UI: thư viện, trình đọc, nghe máy đọc, song ngữ, tra từ
       readaloud.js          # 🎤 tự đọc to: nhận giọng liên tục, dò chữ, chấm điểm
   main.js                   # bootstrap: init từng feature theo thứ tự
-tools/                      # gen_audio.py (sinh audio IPA bằng eSpeak), server.py (eSpeak API local)
+tools/                      # gen_audio.py (audio IPA), server.py (eSpeak API local),
+                            # export_chapbut_pdf.py (xuất 1000 câu ra PDF bài tập + đáp án → pdf/)
 ```
 
 Quy ước:
@@ -77,7 +78,7 @@ Dữ liệu: `writing_progress`, `writing_extra` (đồng bộ Firestore), `writ
 ## Đọc Truyện (Reading)
 
 - **Thư viện**:
-  - **📂 Truyện từ Drive** (`reading/drive.js`): 9 cuốn trong thư mục Google Drive chia sẻ công khai. Repo chỉ lưu id file; lần mở đầu app tải EPUB qua Google Drive API rồi lưu vào IndexedDB. Cần `DRIVE_API_KEY` (API key GCP đã bật *Google Drive API*, thêm vào GitHub Secrets). Chưa có key thì thẻ sách hướng dẫn tải tay → 📥 Nhập EPUB (file trùng tên tự gắn vào kệ Drive).
+  - **📂 Truyện từ Drive** (`reading/drive.js`): 9 cuốn trong thư mục Google Drive chia sẻ công khai. Repo chỉ lưu id file; lần mở đầu app tải EPUB qua Google Drive API rồi lưu vào IndexedDB. Cần `DRIVE_API_KEY` (API key GCP đã bật *Google Drive API*, thêm vào GitHub Secrets). Chưa có key thì tải cả thư mục Drive thành 1 file .zip → 📥 Nhập EPUB / ZIP: app bung zip, mọi EPUB trùng tên tự gắn vào kệ Drive.
   - **Truyện mẫu**: 3 truyện song ngữ ngắn tự viết.
   - **Sách của bạn**: EPUB tự nhập.
   - Nội dung sách chỉ lưu trong IndexedDB của trình duyệt, **không** đưa lên repo hay Firebase (truyện có bản quyền; repo deploy public). `*.epub` đã nằm trong `.gitignore`.
