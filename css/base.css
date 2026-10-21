@@ -409,3 +409,75 @@ body::after {
 }
 
 .theme-toggle:hover { border-color: var(--cyan); transform: rotate(-12deg); }
+
+/* ---- Streak Badge & Toast ------------------------------------------------ */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+  color: var(--amber);
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.streak-badge:hover {
+  transform: translateY(-1px);
+  border-color: var(--amber);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+}
+
+.streak-badge.active-today {
+  border-color: var(--emerald);
+  color: var(--emerald);
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.05));
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.2);
+}
+
+.streak-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--card);
+  border: 1px solid var(--amber);
+  border-radius: 12px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  z-index: 100000;
+  transform: translateY(-30px);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.streak-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.streak-toast-icon {
+  font-size: 26px;
+  flex: 0 0 auto;
+}
+
+.streak-toast-title {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--amber);
+}
+
+.streak-toast-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+

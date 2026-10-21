@@ -586,6 +586,7 @@ function submitIeltsTest(isTimeOut = false) {
   };
 
   saveIeltsHistory(currentIeltsTest.id, resultRecord);
+  recordLearningActivity("ielts", { testId: currentIeltsTest.id, band });
   renderIeltsResult(resultRecord, details);
 }
 

@@ -78,6 +78,7 @@ function recordResult(sentenceId, answer, result) {
     t: Date.now(),
   };
   WritingData.saveProgress();
+  if (typeof recordLearningActivity === "function") recordLearningActivity("writing", { sentenceId });
   (result.errors || []).forEach(e => e.type && logError(`✍️ ${e.type}`));
 }
 

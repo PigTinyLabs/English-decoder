@@ -3,11 +3,15 @@ let todayQuizData = null; // mảng câu hỏi của đề đang hiển thị
 let userAnswers = {};
 let quizContainer, submitQuizBtn, quizResultLog;
 
-function getStreak() { return parseInt(Store.get("quiz_streak", "0")); }
+function getStreak() { return typeof Streak !== "undefined" ? Streak.getStreak() : parseInt(Store.get("quiz_streak", "0")); }
 function getQuizHistory() { return Store.getJSON("quiz_history", {}); }
 
 function updateStreakBadge() {
-  document.getElementById("streakBadge").innerHTML = `🔥 ${getStreak()} days`;
+  if (typeof Streak !== "undefined") Streak.updateBadges();
+  else {
+    const el = document.getElementById("streakBadge");
+    if (el) el.innerHTML = `🔥 ${getStreak()} ngày`;
+  }
 }
 
 function loadTodayQuiz() {
@@ -152,13 +156,8 @@ function submitQuiz() {
   };
   Store.set("quiz_history", history);
 
-  // Streak chỉ tăng khi hôm qua có làm bài (hoặc đang ở 0), ngược lại reset về 1
-  let streak = getStreak();
-  if (streak === 0 || history[getTodayStr(-1)]) streak++;
-  else streak = 1;
-  Store.setLocal("quiz_streak", streak.toString());
-  syncDataToFirebase("quiz_streak", streak);
-  updateStreakBadge();
+  // Ghi nhận hoạt động vào Streak toàn diện
+  recordLearningActivity("quiz", { questionsCount: todayQuizData.length });
 
   gradeQuiz();
 }

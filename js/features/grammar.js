@@ -104,6 +104,7 @@ function checkTenseAnswer() {
     quizInput.style.color = "var(--red)";
     logError(currentTenseQuiz.errorType);
   }
+  if (typeof recordLearningActivity === "function") recordLearningActivity("grammar", { tense: currentTenseQuiz.type });
 }
 
 // ---- Error Logging ----------------------------------------------------------

@@ -13,6 +13,7 @@ function addVocab(word, mean = "") {
   if (!w) return false;
   vocabList.unshift({ word: w, mean: mean.trim() });
   saveVocab();
+  if (typeof recordLearningActivity === "function") recordLearningActivity("vocab", { word: w });
   return true;
 }
 

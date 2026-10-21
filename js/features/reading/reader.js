@@ -35,6 +35,7 @@ function saveReadingProgress() {
   const prev = R.progress[R.book.id] || {};
   R.progress[R.book.id] = { ...prev, ch: R.ch, p: R.cur, t: Date.now() };
   Store.setLocal("reading_progress", R.progress);
+  if (typeof recordLearningActivity === "function") recordLearningActivity("reading", { bookId: R.book.id });
   clearTimeout(progressSyncTimer);
   progressSyncTimer = setTimeout(() => syncDataToFirebase("reading_progress", R.progress), 4000);
 }

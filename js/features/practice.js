@@ -67,6 +67,7 @@ function setupRecognition() {
     const cleanSpoken = spoken.replace(/[.,!?]/g, "");
     pracSpokenWord.textContent = `Bạn đã đọc: "${cleanSpoken}"`;
     micBtn.classList.remove("recording");
+    if (typeof recordLearningActivity === "function") recordLearningActivity("practice", { word: cleanSpoken });
 
     if (cleanSpoken === state.data.word.toLowerCase()) {
       renderDiff(state.targetTokens, state.targetTokens);
