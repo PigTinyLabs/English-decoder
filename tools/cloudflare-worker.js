@@ -9,10 +9,13 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-// Model có sẵn miễn phí trên Cloudflare Workers AI:
-// 1. "@cf/qwen/qwen2.5-7b-instruct" (Khuyên dùng: Rất thông minh, tiếng Việt cực chuẩn, không bị ảo giác)
-// 2. "@cf/meta/llama-3.2-3b-instruct" (Siêu nhẹ, nhưng dễ bị ảo giác khi gặp tiếng Việt)
-const AI_MODEL = "@cf/qwen/qwen2.5-7b-instruct";
+// Danh sách models Workers AI ưu tiên thử lần lượt:
+// 1. Llama 3.1 8B (Thông minh, 8 tỷ tham số, hiểu ngữ cảnh và tiếng Việt tốt hơn nhiều)
+// 2. Llama 3.2 3B (Siêu nhẹ, tốc độ cao, tiết kiệm token)
+const CF_AI_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.2-3b-instruct"
+];
 
 // Danh sách models Gemini dự phòng nếu không dùng Workers AI
 const GEMINI_MODELS = [
@@ -37,7 +40,7 @@ export default {
       return new Response(JSON.stringify({
         status: "ok",
         service: "english-decoder-ai",
-        provider: hasAI ? `Cloudflare Workers AI (${AI_MODEL.split("/").pop()})` : (hasGemini ? "Gemini" : "None")
+        provider: hasAI ? "Cloudflare Workers AI (Llama 3.1 8B / 3.2 3B)" : (hasGemini ? "Gemini" : "None")
       }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       });
@@ -77,38 +80,41 @@ export default {
       }
 
       // ƯU TIÊN 1: Chạy mô hình AI có sẵn trên Cloudflare Workers AI
+      let cfError = null;
       if (env.AI) {
-        try {
-          const aiRes = await env.AI.run(AI_MODEL, {
-            messages: [
-              {
-                role: "system",
-                content: "You are an expert English teacher evaluating translation exercises. Output ONLY valid JSON matching the requested schema. In the returned JSON, 'corrected' and 'natural' must ALWAYS be written in ENGLISH (never Vietnamese). Other explanation fields can be in Vietnamese."
-              },
-              { role: "user", content: promptText }
-            ],
-            temperature: 0.2,
-            max_tokens: 1024,
-          });
+        for (const model of CF_AI_MODELS) {
+          try {
+            const aiRes = await env.AI.run(model, {
+              messages: [
+                {
+                  role: "system",
+                  content: "You are an expert English teacher evaluating translation exercises. Output ONLY valid JSON matching the requested schema. In the returned JSON, 'corrected' and 'natural' must ALWAYS be written in ENGLISH (never Vietnamese). Other explanation fields can be in Vietnamese."
+                },
+                { role: "user", content: promptText }
+              ],
+              temperature: 0.2,
+              max_tokens: 1024,
+            });
 
-          const outputText = typeof aiRes.response === "string" 
-            ? aiRes.response 
-            : JSON.stringify(aiRes.response || "");
-          return new Response(JSON.stringify({
-            model: AI_MODEL.split("/").pop(),
-            candidates: [
-              {
-                content: {
-                  parts: [{ text: outputText }]
+            const outputText = typeof aiRes.response === "string" 
+              ? aiRes.response 
+              : JSON.stringify(aiRes.response || "");
+            return new Response(JSON.stringify({
+              model: model.split("/").pop(),
+              candidates: [
+                {
+                  content: {
+                    parts: [{ text: outputText }]
+                  }
                 }
-              }
-            ]
-          }), {
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
-          });
-        } catch (aiErr) {
-          console.warn("Workers AI error, trying Gemini fallback:", aiErr);
-          // Tiếp tục fallback bên dưới nếu có Gemini
+              ]
+            }), {
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+            });
+          } catch (aiErr) {
+            cfError = `[${model}]: ${aiErr.message}`;
+            console.warn(`Workers AI ${model} error:`, aiErr);
+          }
         }
       }
 
@@ -138,7 +144,7 @@ export default {
             lastError = `[${model}]: ${e.message}`;
           }
         }
-        return new Response(JSON.stringify({ error: `Tất cả models đều lỗi:\n${lastError}` }), {
+        return new Response(JSON.stringify({ error: `Tất cả models đều lỗi:\n${cfError ? `Workers AI: ${cfError}\n` : ""}${lastError || ""}` }), {
           status: 502,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
         });
