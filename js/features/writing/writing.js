@@ -198,7 +198,7 @@ function resultHtml(sentence, r) {
   const showNatural = r.natural && normalizeSentence(r.natural) !== normalizeSentence(readTarget);
   return `
     <div class="wr-result ${ui.cls}">
-      <div class="wr-verdict">${ui.icon} ${ui.label} <span class="wr-score">${r.score}/10</span> ${r.source === "ai" ? `<span class="wr-badge">${Gemini.provider() === "bitnet" ? "BitNet 3B" : "AI"}</span>` : ""}</div>
+      <div class="wr-verdict">${ui.icon} ${ui.label} <span class="wr-score">${r.score}/10</span> ${r.source === "ai" ? `<span class="wr-badge">${Gemini.providerLabel().includes("Llama") ? "Llama 3.2 3B" : (Gemini.provider() === "bitnet" ? "BitNet 3B" : "AI")}</span>` : ""}</div>
       ${r.verdict !== "correct" && r.diffRef ? `<div class="wr-diff" title="So với câu sửa">${diffHtml(answer, r.diffRef)}</div>` : ""}
       ${r.verdict !== "correct" ? `<div class="wr-line"><span class="label">Câu sửa</span><span class="wr-en">${escapeHtml(r.corrected)}</span></div>` : ""}
       ${showNatural ? `<div class="wr-line"><span class="label">Tự nhiên</span><span class="wr-en">${escapeHtml(r.natural)}</span></div>` : ""}

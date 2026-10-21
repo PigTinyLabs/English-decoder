@@ -54,6 +54,7 @@ const Gemini = {
   providerLabel() {
     const p = this.provider();
     if (p === "bitnet") return `BitNet 3B (${this.bitnetModel()})`;
+    if (this.proxyUrl().includes("workers.dev")) return "Cloudflare Workers AI (Llama 3.2 3B)";
     if (p === "gemini") return "Gemini";
     return "Offline (Rule-based)";
   },
