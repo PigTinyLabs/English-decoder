@@ -27,7 +27,11 @@ jobs:
       - name: Generate env.js
         run: |
           echo "window.ENV = {" > env.js
-          echo "  GEMINI_PROXY_URL: '${{ secrets.GEMINI_PROXY_URL }}'," >> env.js
+          echo "  LLM_PROVIDER: '${{ secrets.LLM_PROVIDER }}'," >> env.js
+          echo "  BITNET_API_URL: '${{ secrets.BITNET_API_URL }}'," >> env.js
+          echo "  BITNET_API_KEY: '${{ secrets.BITNET_API_KEY }}'," >> env.js
+          echo "  BITNET_MODEL: '${{ secrets.BITNET_MODEL }}'," >> env.js
+          echo "  GEMINI_PROXY_URL: '${{ secrets.GEMINI_PROXY_URL || 'https://english-decoder.tinyspirit99-9ec.workers.dev' }}'," >> env.js
           echo "  GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'," >> env.js
           echo "  DRIVE_API_KEY: '${{ secrets.DRIVE_API_KEY }}'," >> env.js
           echo "  FIREBASE_API_KEY: '${{ secrets.FIREBASE_API_KEY }}'," >> env.js

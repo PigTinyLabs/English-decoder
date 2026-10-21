@@ -74,7 +74,7 @@ function homeViewHtml() {
       </div>
       <button class="btn wr-review-cta" data-start-chat="due" ${done ? "" : "disabled title='Hãy viết ít nhất 1 câu trước'"}>💬 Ôn tập đối đáp${dueCount ? ` (${dueCount})` : ""}</button>
     </div>
-    <div class="wr-mode ${ai ? "on" : ""}">${ai ? "🤖 AI chấm bài: BẬT (Gemini)" : "📴 Chế độ offline: chấm bằng so khớp đáp án mẫu (thêm Gemini key trong env.js để AI chấm & trò chuyện)"}</div>
+    <div class="wr-mode ${ai ? "on" : ""}">${ai ? `🤖 AI chấm bài: BẬT (${Gemini.providerLabel()})` : "📴 Chế độ offline: chấm bằng bộ phân tích ngữ pháp & đáp án mẫu"}</div>
     ${weeks}
   `;
 }
@@ -198,7 +198,7 @@ function resultHtml(sentence, r) {
   const showNatural = r.natural && normalizeSentence(r.natural) !== normalizeSentence(readTarget);
   return `
     <div class="wr-result ${ui.cls}">
-      <div class="wr-verdict">${ui.icon} ${ui.label} <span class="wr-score">${r.score}/10</span> ${r.source === "ai" ? `<span class="wr-badge">AI</span>` : ""}</div>
+      <div class="wr-verdict">${ui.icon} ${ui.label} <span class="wr-score">${r.score}/10</span> ${r.source === "ai" ? `<span class="wr-badge">${Gemini.provider() === "bitnet" ? "BitNet 3B" : "AI"}</span>` : ""}</div>
       ${r.verdict !== "correct" && r.diffRef ? `<div class="wr-diff" title="So với câu sửa">${diffHtml(answer, r.diffRef)}</div>` : ""}
       ${r.verdict !== "correct" ? `<div class="wr-line"><span class="label">Câu sửa</span><span class="wr-en">${escapeHtml(r.corrected)}</span></div>` : ""}
       ${showNatural ? `<div class="wr-line"><span class="label">Tự nhiên</span><span class="wr-en">${escapeHtml(r.natural)}</span></div>` : ""}
