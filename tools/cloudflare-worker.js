@@ -81,7 +81,7 @@ export default {
             messages: [
               {
                 role: "system",
-                content: "You are an expert English teacher evaluating translation exercises. Output ONLY valid JSON matching the requested schema. Do not add conversational introduction or markdown text outside JSON."
+                content: "You are an expert English teacher evaluating translation exercises. Output ONLY valid JSON matching the requested schema. In the returned JSON, 'corrected' and 'natural' must ALWAYS be written in ENGLISH (never Vietnamese). Other explanation fields can be in Vietnamese."
               },
               { role: "user", content: promptText }
             ],

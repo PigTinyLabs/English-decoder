@@ -143,33 +143,36 @@ function gradeLocal(sentence, answer, lesson = null) {
   };
 }
 
+function hasVietnamese(text) {
+  return /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(text || "");
+}
+
 function buildGradePrompt(sentence, answer, lesson) {
   return `Bạn là giáo viên tiếng Anh chấm bài dịch Việt → Anh cho người Việt (trình độ A2-B1).
-Câu tiếng Việt: "${sentence.vi}"
+Câu tiếng Việt cần dịch: "${sentence.vi}"
 Điểm ngữ pháp trọng tâm: ${lesson ? lesson.grammar.name : "tự do"}
-Đáp án tham khảo: "${sentence.en}"${sentence.alt?.length ? ` (hoặc: ${sentence.alt.map(a => `"${a}"`).join(", ")})` : ""}
+Đáp án tiếng Anh tham khảo: "${sentence.en}"${sentence.alt?.length ? ` (hoặc: ${sentence.alt.map(a => `"${a}"`).join(", ")})` : ""}
 Bài làm của học viên: "${answer}"
 
-Yêu cầu:
-- Chấp nhận mọi cách dịch đúng nghĩa và đúng ngữ pháp, KHÔNG bắt buộc giống đáp án tham khảo.
-- verdict: "correct" nếu đúng hoàn toàn; "minor" nếu chỉ sai nhỏ (chính tả, mạo từ, dấu câu, thiếu s); "wrong" nếu sai ngữ pháp chính hoặc sai nghĩa.
-- corrected: sửa câu của học viên với ít thay đổi nhất (nếu đúng thì giữ nguyên).
-- natural: cách người bản xứ hay nói nhất.
-- errors: tối đa 3 lỗi, "type" là nhãn lỗi ngắn bằng tiếng Việt (VD "Thiếu to be", "Sai thì quá khứ"), "explain" giải thích 1 câu bằng tiếng Việt.
-- tip: 1 mẹo ngắn bằng tiếng Việt để nhớ (có thể để trống).
-- analysis: Phân tích cấu trúc câu và các điểm ngữ pháp để học viên hiểu sâu:
-  + structure: Công thức cấu trúc câu (VD: "S + V(s/es) + O + Time" hoặc "S + will be able to + V-inf").
+QUY TẮC BẮT BUỘC VỀ NGÔN NGỮ:
+1. "corrected": BẮT BUỘC LÀ CÂU TIẾNG ANH (English only, tuyệt đối KHÔNG viết tiếng Việt ở trường này). Sửa câu của học viên thành tiếng Anh đúng ngữ pháp với ít thay đổi nhất. Nếu học viên viết sai hoàn toàn, viết linh tinh hoặc chưa dịch thì dùng câu tiếng Anh chuẩn tương đương.
+2. "natural": BẮT BUỘC LÀ CÂU TIẾNG ANH (English only) tự nhiên nhất của người bản xứ.
+3. "verdict": "correct" nếu đúng hoàn toàn; "minor" nếu chỉ sai nhỏ (chính tả, mạo từ, dấu câu, thiếu s); "wrong" nếu sai ngữ pháp chính hoặc sai nghĩa.
+4. "errors": tối đa 3 lỗi, "type" là nhãn lỗi ngắn bằng tiếng Việt, "explain" giải thích 1 câu bằng tiếng Việt.
+5. "tip": 1 mẹo ngắn bằng tiếng Việt để nhớ (có thể để trống).
+6. "analysis": Phân tích cấu trúc câu và các điểm ngữ pháp để học viên hiểu sâu:
+  + structure: Công thức cấu trúc câu (VD: "S + V(s/es) + O + Time").
   + components: Mảng các thành phần câu [{"label": "S|V|O|Prep|Adv", "text": "..."}].
-  + rules: Mảng giải thích quy tắc chia từ/thì (đặc biệt: tại sao thêm -s/es, tại sao thêm -ed, bất quy tắc, to-V, V-ing) [{"target": "từ", "type": "Tên quy tắc", "rule": "Giải thích chi tiết dễ hiểu"}].
-  + patterns: Mảng các cấu trúc/cụm từ quan trọng (như be able to + V, used to + V, spend time V-ing, giới từ) [{"name": "Cụm cấu trúc", "usage": "Cách dùng và lưu ý"}].
-  + learnerNote: Nhận xét đối chiếu với cách viết của học viên (nếu học viên viết sai/quên s, ed, to...).
+  + rules: Mảng giải thích quy tắc chia từ/thì [{"target": "từ", "type": "Tên quy tắc", "rule": "Giải thích chi tiết bằng tiếng Việt"}].
+  + patterns: Mảng các cấu trúc/cụm từ quan trọng [{"name": "Cụm cấu trúc", "usage": "Cách dùng bằng tiếng Việt"}].
+  + learnerNote: Nhận xét ngắn đối chiếu với bài học viên bằng tiếng Việt.
 
 Chỉ trả về JSON:
 {
   "score": 0-10,
   "verdict": "correct|minor|wrong",
-  "corrected": "",
-  "natural": "",
+  "corrected": "Câu tiếng Anh đã sửa (English only)",
+  "natural": "Câu tiếng Anh tự nhiên (English only)",
   "errors": [{"type": "", "explain": ""}],
   "tip": "",
   "analysis": {
@@ -189,16 +192,26 @@ async function gradeSentence(sentence, answer, lesson) {
   try {
     const r = await Gemini.generateJSON(buildGradePrompt(sentence, answer, lesson));
     const verdict = ["correct", "minor", "wrong"].includes(r.verdict) ? r.verdict : local.verdict;
-    const targetRef = r.corrected || local.corrected;
-    const analysis = buildGrammarAnalysis({ ...sentence, en: targetRef }, answer, lesson, r.analysis);
+    
+    // Đảm bảo corrected và natural luôn là tiếng Anh
+    let corrected = (typeof r.corrected === "string" && r.corrected.trim()) ? r.corrected.trim() : "";
+    if (!corrected || hasVietnamese(corrected)) {
+      corrected = local.corrected || sentence.en;
+    }
+    let natural = (typeof r.natural === "string" && r.natural.trim()) ? r.natural.trim() : "";
+    if (!natural || hasVietnamese(natural)) {
+      natural = sentence.en;
+    }
+
+    const analysis = buildGrammarAnalysis({ ...sentence, en: corrected }, answer, lesson, r.analysis);
     return {
       score: Number.isFinite(+r.score) ? Math.max(0, Math.min(10, Math.round(+r.score))) : local.score,
       verdict,
-      corrected: r.corrected || local.corrected,
-      natural: r.natural || sentence.en,
+      corrected,
+      natural,
       errors: Array.isArray(r.errors) ? r.errors.slice(0, 3) : [],
       tip: r.tip || "",
-      diffRef: r.corrected || local.corrected,
+      diffRef: corrected,
       analysis,
       source: "ai",
     };
