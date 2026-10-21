@@ -126,9 +126,10 @@ function bestReference(sentence, answer) {
   return { ref: best, sim: bestSim };
 }
 
-function gradeLocal(sentence, answer) {
+function gradeLocal(sentence, answer, lesson = null) {
   const { ref, sim } = bestReference(sentence, answer);
   const verdict = sim >= 0.999 ? "correct" : sim >= 0.7 ? "minor" : "wrong";
+  const analysis = buildGrammarAnalysis({ ...sentence, en: ref }, answer, lesson, null);
   return {
     score: verdict === "correct" ? 10 : Math.round(sim * 10),
     verdict,
@@ -138,6 +139,7 @@ function gradeLocal(sentence, answer) {
     tip: verdict === "correct" ? "" : "Chế độ offline chỉ so khớp với đáp án mẫu — câu khác cách diễn đạt vẫn có thể đúng.",
     diffRef: ref,
     source: "local",
+    analysis,
   };
 }
 
@@ -155,17 +157,40 @@ Yêu cầu:
 - natural: cách người bản xứ hay nói nhất.
 - errors: tối đa 3 lỗi, "type" là nhãn lỗi ngắn bằng tiếng Việt (VD "Thiếu to be", "Sai thì quá khứ"), "explain" giải thích 1 câu bằng tiếng Việt.
 - tip: 1 mẹo ngắn bằng tiếng Việt để nhớ (có thể để trống).
+- analysis: Phân tích cấu trúc câu và các điểm ngữ pháp để học viên hiểu sâu:
+  + structure: Công thức cấu trúc câu (VD: "S + V(s/es) + O + Time" hoặc "S + will be able to + V-inf").
+  + components: Mảng các thành phần câu [{"label": "S|V|O|Prep|Adv", "text": "..."}].
+  + rules: Mảng giải thích quy tắc chia từ/thì (đặc biệt: tại sao thêm -s/es, tại sao thêm -ed, bất quy tắc, to-V, V-ing) [{"target": "từ", "type": "Tên quy tắc", "rule": "Giải thích chi tiết dễ hiểu"}].
+  + patterns: Mảng các cấu trúc/cụm từ quan trọng (như be able to + V, used to + V, spend time V-ing, giới từ) [{"name": "Cụm cấu trúc", "usage": "Cách dùng và lưu ý"}].
+  + learnerNote: Nhận xét đối chiếu với cách viết của học viên (nếu học viên viết sai/quên s, ed, to...).
 
-Chỉ trả về JSON: {"score": 0-10, "verdict": "correct|minor|wrong", "corrected": "", "natural": "", "errors": [{"type": "", "explain": ""}], "tip": ""}`;
+Chỉ trả về JSON:
+{
+  "score": 0-10,
+  "verdict": "correct|minor|wrong",
+  "corrected": "",
+  "natural": "",
+  "errors": [{"type": "", "explain": ""}],
+  "tip": "",
+  "analysis": {
+    "structure": "",
+    "components": [{"label": "", "text": ""}],
+    "rules": [{"target": "", "type": "", "rule": ""}],
+    "patterns": [{"name": "", "usage": ""}],
+    "learnerNote": ""
+  }
+}`;
 }
 
 // Chấm một câu: khớp đáp án mẫu thì chấm ngay; còn lại hỏi Gemini (nếu có), lỗi thì quay về chấm offline.
 async function gradeSentence(sentence, answer, lesson) {
-  const local = gradeLocal(sentence, answer);
+  const local = gradeLocal(sentence, answer, lesson);
   if (local.verdict === "correct" || !Gemini.isAvailable()) return local;
   try {
     const r = await Gemini.generateJSON(buildGradePrompt(sentence, answer, lesson));
     const verdict = ["correct", "minor", "wrong"].includes(r.verdict) ? r.verdict : local.verdict;
+    const targetRef = r.corrected || local.corrected;
+    const analysis = buildGrammarAnalysis({ ...sentence, en: targetRef }, answer, lesson, r.analysis);
     return {
       score: Number.isFinite(+r.score) ? Math.max(0, Math.min(10, Math.round(+r.score))) : local.score,
       verdict,
@@ -174,6 +199,7 @@ async function gradeSentence(sentence, answer, lesson) {
       errors: Array.isArray(r.errors) ? r.errors.slice(0, 3) : [],
       tip: r.tip || "",
       diffRef: r.corrected || local.corrected,
+      analysis,
       source: "ai",
     };
   } catch (e) {

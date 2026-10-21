@@ -10,6 +10,7 @@ const W = {
   busy: false,
   showGrammar: true,
   showHint: false,
+  showAnalysis: true,
   shadow: null,    // kết quả "đọc theo" của câu hiện tại
   playingIndex: -1,
 };
@@ -99,6 +100,7 @@ function resetSentenceState() {
   W.result = null;
   W.draft = "";
   W.showHint = false;
+  W.showAnalysis = true;
   W.shadow = null;
   W.busy = false;
 }
@@ -203,6 +205,8 @@ function resultHtml(sentence, r) {
       ${r.errors?.length ? `<ul class="wr-errors">${r.errors.map(e => `<li><b>${escapeHtml(e.type)}</b> — ${escapeHtml(e.explain)}</li>`).join("")}</ul>` : ""}
       ${r.tip ? `<div class="wr-tip">💡 ${escapeHtml(r.tip)}</div>` : ""}
 
+      ${analysisHtml(sentence, r)}
+
       <div class="wr-readback">
         <div class="label">🔁 Đọc lại câu vừa viết</div>
         <div class="wr-readback-btns">
@@ -215,6 +219,95 @@ function resultHtml(sentence, r) {
         ${W.shadow ? shadowHtml(W.shadow) : ""}
       </div>
     </div>`;
+}
+
+function analysisHtml(sentence, r) {
+  if (!r || !r.analysis) return "";
+  const a = r.analysis;
+  const isExpanded = W.showAnalysis !== false;
+
+  // Thành phần câu (S - V - O - Prep/Adv)
+  const compsHtml = (a.components || []).map(c => {
+    const role = (c.label || "").toUpperCase();
+    let roleClass = "other";
+    let roleTitle = "Thành phần câu";
+    if (role.startsWith("S")) { roleClass = "s"; roleTitle = "Chủ ngữ (Subject)"; }
+    else if (role.startsWith("V")) { roleClass = "v"; roleTitle = "Động từ (Verb)"; }
+    else if (role.startsWith("O")) { roleClass = "o"; roleTitle = "Tân ngữ (Object)"; }
+    else if (role.includes("PREP")) { roleClass = "prep"; roleTitle = "Cụm giới từ (Prepositional)"; }
+    else if (role.includes("ADV")) { roleClass = "adv"; roleTitle = "Trạng từ / Thời gian (Adverbial)"; }
+
+    return `<span class="wr-syn-chip syn-${roleClass}" title="${escapeHtml(roleTitle)}"><span class="wr-syn-label">${escapeHtml(c.label)}</span> <span class="wr-syn-text">${escapeHtml(c.text)}</span></span>`;
+  }).join('<span class="wr-syn-plus">+</span>');
+
+  // Lưu ý đối chiếu riêng cho câu người học viết
+  const learnerNotesHtml = (a.learnerNotes || []).map(n => `
+    <div class="wr-ana-alert ${n.type}">
+      <span class="wr-ana-alert-icon">${n.type === "warning" ? "⚠️" : "💡"}</span>
+      <div class="wr-ana-alert-body">
+        ${n.title ? `<div class="wr-ana-alert-title">${escapeHtml(n.title)}</div>` : ""}
+        <div>${n.message}</div>
+      </div>
+    </div>
+  `).join("");
+
+  // Quy tắc chia từ (thêm -s/es, -ed, bất quy tắc, -ing)
+  const rulesHtml = (a.rules || []).map(rule => `
+    <div class="wr-rule-card">
+      <div class="wr-rule-top">
+        <span class="wr-rule-target">${escapeHtml(rule.target)}</span>
+        <span class="wr-rule-type">${escapeHtml(rule.type)}</span>
+      </div>
+      <div class="wr-rule-desc">${rule.detail}</div>
+    </div>
+  `).join("");
+
+  // Cấu trúc & Mẫu câu (be able to, used to, collocations...)
+  const patternsHtml = (a.patterns || []).map(p => `
+    <div class="wr-pat-card">
+      <div class="wr-pat-top">
+        <span class="wr-pat-name">📌 ${escapeHtml(p.name)}</span>
+        ${p.formula ? `<code class="wr-pat-formula">${escapeHtml(p.formula)}</code>` : ""}
+      </div>
+      <div class="wr-pat-usage">${escapeHtml(p.usage)}</div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="wr-analysis ${isExpanded ? "open" : ""}">
+      <button class="wr-analysis-head" data-action="toggle-analysis">
+        <span>📐 <b>Phân tích cấu trúc & ngữ pháp câu</b></span>
+        <span class="wr-analysis-arrow">${isExpanded ? "▲ Thu gọn" : "▼ Chi tiết cấu trúc"}</span>
+      </button>
+
+      ${isExpanded ? `
+        <div class="wr-analysis-body">
+          ${learnerNotesHtml}
+
+          <!-- Cấu trúc tổng quát & Cú pháp S-V-O -->
+          <div class="wr-ana-block">
+            <div class="wr-ana-label">🏗️ Cấu trúc câu</div>
+            <div class="wr-ana-formula"><code>${escapeHtml(a.structure || "S + V + O")}</code></div>
+            ${compsHtml ? `<div class="wr-syn-bar">${compsHtml}</div>` : ""}
+          </div>
+
+          <!-- Quy tắc chia động từ & biến đổi từ -->
+          ${rulesHtml ? `
+            <div class="wr-ana-block">
+              <div class="wr-ana-label">⚡ Quy tắc biến đổi & chia từ (s/es, ed, quá khứ)</div>
+              <div class="wr-rule-grid">${rulesHtml}</div>
+            </div>` : ""}
+
+          <!-- Mẫu câu & Cụm từ cần nhớ -->
+          ${patternsHtml ? `
+            <div class="wr-ana-block">
+              <div class="wr-ana-label">🧩 Mẫu câu & Cụm từ cần nhớ (Collocations)</div>
+              <div class="wr-pat-grid">${patternsHtml}</div>
+            </div>` : ""}
+        </div>
+      ` : ""}
+    </div>
+  `;
 }
 
 function shadowHtml(sh) {
@@ -294,9 +387,11 @@ function revealAnswer() {
   const lesson = currentLesson();
   const sentence = getLessonSentences(lesson)[W.index];
   W.draft = (document.getElementById("wrAnswer")?.value || "").trim() || "(bỏ qua)";
+  const analysis = buildGrammarAnalysis(sentence, W.draft, lesson, null);
   W.result = {
     score: 0, verdict: "wrong", corrected: sentence.en, natural: sentence.en,
-    errors: [], tip: sentence.alt?.length ? `Cách khác: ${sentence.alt.join(" / ")}` : "", diffRef: null, source: "local",
+    errors: [], tip: sentence.alt?.length ? `Cách khác: ${sentence.alt.map(a => `"${a}"`).join(" / ")}` : "", diffRef: null, source: "local",
+    analysis,
   };
   recordResult(sentence.id, W.draft, W.result);
   renderWriting();
@@ -383,6 +478,7 @@ function handleWritingClick(e) {
   switch (action) {
     case "home": W.view = "home"; renderWriting(); break;
     case "toggle-grammar": keepDraft(); W.showGrammar = !W.showGrammar; renderWriting(); break;
+    case "toggle-analysis": keepDraft(); W.showAnalysis = !W.showAnalysis; renderWriting(); break;
     case "toggle-autoread":
       keepDraft();
       WritingData.settings.autoRead = !WritingData.settings.autoRead;
