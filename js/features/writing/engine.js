@@ -187,6 +187,24 @@ Chỉ trả về JSON:
 
 // Chấm một câu: khớp đáp án mẫu thì chấm ngay; còn lại hỏi Gemini (nếu có), lỗi thì quay về chấm offline.
 async function gradeSentence(sentence, answer, lesson) {
+  const trimmed = (answer || "").trim();
+
+  // Nếu học viên nhập tiếng Việt hoặc chép lại đề bài tiếng Việt
+  if (hasVietnamese(trimmed)) {
+    const analysis = buildGrammarAnalysis({ ...sentence, en: sentence.en }, trimmed, lesson, null);
+    return {
+      score: 0,
+      verdict: "wrong",
+      corrected: sentence.en,
+      natural: sentence.en,
+      errors: [{ type: "Chưa dịch sang tiếng Anh", explain: "Bạn đang nhập tiếng Việt. Hãy dịch câu này sang tiếng Anh nhé!" }],
+      tip: "Đề bài yêu cầu Dịch sang tiếng Anh.",
+      diffRef: sentence.en,
+      analysis,
+      source: "local",
+    };
+  }
+
   const local = gradeLocal(sentence, answer, lesson);
   if (local.verdict === "correct" || !Gemini.isAvailable()) return local;
   try {

@@ -9,10 +9,12 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-// Model 3B có sẵn miễn phí trên Cloudflare Workers AI
-const LLAMA_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+// Model có sẵn miễn phí trên Cloudflare Workers AI:
+// 1. "@cf/qwen/qwen2.5-7b-instruct" (Khuyên dùng: Rất thông minh, tiếng Việt cực chuẩn, không bị ảo giác)
+// 2. "@cf/meta/llama-3.2-3b-instruct" (Siêu nhẹ, nhưng dễ bị ảo giác khi gặp tiếng Việt)
+const AI_MODEL = "@cf/qwen/qwen2.5-7b-instruct";
 
-// Danh sách models Gemini dự phòng nếu không dùng Llama
+// Danh sách models Gemini dự phòng nếu không dùng Workers AI
 const GEMINI_MODELS = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
@@ -35,7 +37,7 @@ export default {
       return new Response(JSON.stringify({
         status: "ok",
         service: "english-decoder-ai",
-        provider: hasAI ? "Cloudflare Workers AI (Llama 3.2 3B)" : (hasGemini ? "Gemini" : "None")
+        provider: hasAI ? `Cloudflare Workers AI (${AI_MODEL.split("/").pop()})` : (hasGemini ? "Gemini" : "None")
       }), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
       });
@@ -74,10 +76,10 @@ export default {
         promptText = JSON.stringify(reqBody);
       }
 
-      // ƯU TIÊN 1: Chạy mô hình Llama 3.2 3B có sẵn trên Cloudflare Workers AI
+      // ƯU TIÊN 1: Chạy mô hình AI có sẵn trên Cloudflare Workers AI
       if (env.AI) {
         try {
-          const aiRes = await env.AI.run(LLAMA_MODEL, {
+          const aiRes = await env.AI.run(AI_MODEL, {
             messages: [
               {
                 role: "system",
@@ -93,7 +95,7 @@ export default {
             ? aiRes.response 
             : JSON.stringify(aiRes.response || "");
           return new Response(JSON.stringify({
-            model: "llama-3.2-3b",
+            model: AI_MODEL.split("/").pop(),
             candidates: [
               {
                 content: {
