@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="css/profile.css" />
   <link rel="stylesheet" href="css/writing.css" />
   <link rel="stylesheet" href="css/reading.css" />
+  <link rel="stylesheet" href="css/ielts.css" />
   <link rel="stylesheet" href="css/responsive.css" />
 </head>
 
@@ -62,6 +63,7 @@
         <button class="tab" data-tab="vocab"><span class="icon">📚</span> Từ Vựng</button>
 
         <div class="tab-group">Luyện tập</div>
+        <button class="tab" data-tab="ielts"><span class="icon">🎓</span> Đề Thi IELTS</button>
         <button class="tab" data-tab="grammar"><span class="icon">📝</span> Ngữ Pháp</button>
         <button class="tab" data-tab="quiz"><span class="icon">🧠</span> AI Quiz</button>
 
@@ -180,6 +182,10 @@
 
       <div class="panel" id="panel-reading">
         <div id="readingRoot"></div>
+      </div>
+
+      <div class="panel" id="panel-ielts">
+        <div id="ieltsRoot"></div>
       </div>
 
       <div class="panel" id="panel-quiz">
@@ -302,6 +308,8 @@
   <script src="js/features/reading/drive.js"></script>
   <script src="js/features/reading/reader.js"></script>
   <script src="js/features/reading/readaloud.js"></script>
+  <script src="js/features/ielts/sample_tests.js"></script>
+  <script src="js/features/ielts/ielts.js"></script>
 
   <script src="js/main.js"></script>
 </body>

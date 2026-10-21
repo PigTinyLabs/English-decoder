@@ -1,0 +1,829 @@
+/* ---- IELTS Practice & Test Module Styles --------------------------------- */
+
+.ielts-wrap {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+/* ---- Library / Dashboard ---- */
+.ielts-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ielts-title-group h2 {
+  font-family: var(--font-head);
+  font-size: 24px;
+  margin: 0 0 4px 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ielts-title-group .sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ielts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.ielts-filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ielts-search-input {
+  flex: 1;
+  min-width: 240px;
+}
+
+.ielts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.ielts-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+.ielts-card:hover {
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.ielts-card.custom-test {
+  border-left: 3px solid var(--amber);
+}
+
+.ielts-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ielts-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--cyan);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.ielts-badge.difficulty {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--amber);
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.ielts-badge.completed {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--emerald);
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.ielts-card-title {
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.ielts-card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  flex: 1;
+}
+
+.ielts-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+  margin-bottom: 16px;
+}
+
+.ielts-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ielts-card-score-box {
+  background: var(--surface-alt);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ielts-card-score-box .band-val {
+  font-weight: 700;
+  color: var(--emerald);
+  font-size: 15px;
+}
+
+.ielts-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ielts-card-actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
+/* ---- Exam Room / Testing Interface ---- */
+.ielts-exam-room {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ielts-exam-topbar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 12px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--glass-shadow);
+}
+
+.ielts-exam-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ielts-exam-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ielts-timer-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-alt);
+  padding: 6px 14px;
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--cyan);
+}
+
+.ielts-timer-box.warning {
+  color: var(--red);
+  border-color: rgba(248, 113, 113, 0.4);
+  animation: pulse-border 1.5s infinite;
+}
+
+@keyframes pulse-border {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.ielts-exam-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ielts-progress-track {
+  width: 120px;
+  height: 8px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ielts-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--emerald));
+  width: 0%;
+  transition: width 0.3s;
+}
+
+/* Exam Split Layout */
+.ielts-split-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .ielts-split-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Passage Column (Left) */
+.ielts-passage-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  position: relative;
+}
+
+.ielts-passage-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ielts-font-adjust {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ielts-passage-content {
+  font-family: var(--font-read);
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--text);
+}
+
+.ielts-passage-title {
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 18px 0;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.ielts-paragraph {
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.ielts-para-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--cyan);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-right: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  user-select: none;
+}
+
+.ielts-highlight {
+  background: rgba(251, 191, 36, 0.35);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+/* Questions Column (Right) */
+.ielts-questions-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Quick Question Palette */
+.ielts-palette {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.ielts-palette-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.ielts-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 8px;
+}
+
+.ielts-palette-btn {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ielts-palette-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.ielts-palette-btn.answered {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: var(--emerald);
+  color: var(--emerald);
+}
+
+.ielts-palette-btn.current {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+
+/* Question Cards */
+.ielts-q-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  transition: border-color 0.2s;
+  scroll-margin-top: 80px;
+}
+
+.ielts-q-card:hover {
+  border-color: var(--border-strong);
+}
+
+.ielts-q-instruction {
+  font-size: 12.5px;
+  color: var(--muted);
+  background: var(--surface-alt);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  border-left: 3px solid var(--cyan);
+  line-height: 1.5;
+}
+
+.ielts-q-text {
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.ielts-q-number {
+  color: var(--cyan);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* Multiple Choice & T/F/NG Options */
+.ielts-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ielts-opt-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: left;
+  user-select: none;
+}
+
+.ielts-opt-btn:hover {
+  border-color: var(--cyan);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.ielts-opt-btn.selected {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.ielts-opt-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ielts-opt-btn.selected .ielts-opt-circle {
+  border-color: var(--cyan);
+  background: var(--cyan);
+  color: #000;
+}
+
+/* Fill Blank / Short Answer */
+.ielts-fill-wrap {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.ielts-fill-input {
+  flex: 1;
+  max-width: 320px;
+  padding: 9px 14px;
+  font-size: 14.5px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.ielts-fill-input:focus {
+  border-color: var(--cyan);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+/* Matching Headings Select */
+.ielts-select-heading {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+/* ---- Review & Result Screen ---- */
+.ielts-result-banner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+.ielts-result-banner::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+.ielts-band-display {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(52, 211, 153, 0.25));
+  border: 3px solid var(--emerald);
+  margin-bottom: 16px;
+  box-shadow: 0 0 24px rgba(52, 211, 153, 0.3);
+}
+
+.ielts-band-val {
+  font-size: 34px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--emerald);
+  line-height: 1;
+}
+
+.ielts-band-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+.ielts-stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.ielts-stat-item {
+  text-align: center;
+}
+
+.ielts-stat-num {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.ielts-stat-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Review Item Styles */
+.ielts-q-card.is-correct {
+  border-left: 4px solid var(--emerald);
+}
+
+.ielts-q-card.is-wrong {
+  border-left: 4px solid var(--red);
+}
+
+.ielts-review-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.ielts-review-tag.correct {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--emerald);
+}
+
+.ielts-review-tag.wrong {
+  background: rgba(248, 113, 113, 0.2);
+  color: var(--red);
+}
+
+.ielts-answer-diff {
+  background: var(--surface-alt);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 13.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ielts-explanation-box {
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 3px solid var(--cyan);
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.ielts-evidence-box {
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid var(--amber);
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ---- Modals (Import, AI Generate, Template) ---- */
+.ielts-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.ielts-modal-card {
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.ielts-modal-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ielts-modal-title {
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ielts-modal-body {
+  padding: 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ielts-modal-footer {
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--panel-soft);
+}
+
+.ielts-modal-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 6px;
+}
+
+.ielts-modal-tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 14px;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.ielts-modal-tab-btn.active {
+  background: var(--surface-alt);
+  color: var(--cyan);
+  border-color: var(--border);
+}
+
+.ielts-dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface-alt);
+}
+
+.ielts-dropzone:hover, .ielts-dropzone.dragover {
+  border-color: var(--cyan);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.ielts-code-preview {
+  background: var(--bg);
+  color: #38bdf8;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+/* Floating selection popup */
+.ielts-select-pop {
+  position: absolute;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  padding: 6px;
+  display: none;
+  gap: 6px;
+  z-index: 1000;
+}
+
+.ielts-select-pop button {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ielts-select-pop button:hover {
+  background: var(--cyan);
+  color: #000;
+}

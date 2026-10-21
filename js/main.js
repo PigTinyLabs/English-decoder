@@ -12,6 +12,7 @@
   initQuiz();
   initWriting();
   initReading();
+  initIelts();
 
   // Firestore: lắng nghe dữ liệu của user + đếm người online
   listenToFirebase();
