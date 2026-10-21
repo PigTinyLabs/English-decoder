@@ -5,6 +5,7 @@
 // 3. Tự động chuyển đổi và trích xuất JSON an toàn cho các model 3B
 
 function extractJSONFromText(raw) {
+  if (typeof raw === "object" && raw !== null) return raw;
   if (!raw || typeof raw !== "string") throw new Error("Phản hồi từ AI rỗng");
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
   try {

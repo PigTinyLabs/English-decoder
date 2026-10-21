@@ -89,7 +89,9 @@ export default {
             max_tokens: 1024,
           });
 
-          const outputText = aiRes.response || "";
+          const outputText = typeof aiRes.response === "string" 
+            ? aiRes.response 
+            : JSON.stringify(aiRes.response || "");
           return new Response(JSON.stringify({
             model: "llama-3.2-3b",
             candidates: [
